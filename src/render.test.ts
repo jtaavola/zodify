@@ -51,4 +51,80 @@ export const schema = z.strictObject({
 });
 `);
   });
+
+  it("renders unknown schema", () => {
+    expect(renderSchema({ kind: "unknown" })).toBe("z.unknown()");
+  });
+
+  it("renders empty arrays", () => {
+    expect(renderSchema({ kind: "array", items: { kind: "unknown" } })).toBe(
+      "z.array(z.unknown())"
+    );
+  });
+
+  it("renders primitive arrays", () => {
+    expect(renderSchema({ kind: "array", items: { kind: "string" } })).toBe(
+      "z.array(z.string())"
+    );
+    expect(renderSchema({ kind: "array", items: { kind: "number" } })).toBe(
+      "z.array(z.number())"
+    );
+  });
+
+  it("renders arrays of objects with optional fields", () => {
+    const schema = inferSchema([
+      { id: "1", name: "Ada" },
+      { id: "2", email: "ada@example.com" },
+    ]);
+
+    expect(renderSchema(schema)).toBe(`z.array(
+  z.strictObject({
+    id: z.string(),
+    name: z.string().optional(),
+    email: z.string().optional(),
+  })
+)`);
+  });
+
+  it("renders arrays with conflicting field types", () => {
+    const schema = inferSchema([
+      { id: "1", age: 42 },
+      { id: "2", age: "unknown" },
+    ]);
+
+    expect(renderSchema(schema)).toBe(`z.array(
+  z.strictObject({
+    id: z.string(),
+    age: z.unknown(),
+  })
+)`);
+  });
+
+  it("renders mixed arrays", () => {
+    expect(renderSchema({ kind: "array", items: { kind: "unknown" } })).toBe(
+      "z.array(z.unknown())"
+    );
+  });
+
+  it("renders a complete module with arrays", () => {
+    const schema = inferSchema({
+      users: [
+        { id: "1", name: "Ada" },
+        { id: "2", email: "ada@example.com" },
+      ],
+    });
+
+    expect(renderModule(schema)).toBe(`import { z } from "zod";
+
+export const schema = z.strictObject({
+  users: z.array(
+    z.strictObject({
+      id: z.string(),
+      name: z.string().optional(),
+      email: z.string().optional(),
+    })
+  ),
+});
+`);
+  });
 });

@@ -14,9 +14,21 @@ export function renderSchema(schema: SchemaNode, indent = 0): string {
       return "z.boolean()";
     case "null":
       return "z.null()";
+    case "unknown":
+      return "z.unknown()";
+    case "array":
+      return renderArray(schema, indent);
     case "object":
       return renderObject(schema, indent);
   }
+}
+
+function renderArray(schema: Extract<SchemaNode, { kind: "array" }>, indent: number): string {
+  const inner = renderSchema(schema.items, indent + 2);
+  if (inner.includes("\n")) {
+    return `z.array(\n${" ".repeat(indent + 2)}${inner}\n${" ".repeat(indent)})`;
+  }
+  return `z.array(${inner})`;
 }
 
 function renderObject(schema: Extract<SchemaNode, { kind: "object" }>, indent: number): string {
@@ -27,8 +39,12 @@ function renderObject(schema: Extract<SchemaNode, { kind: "object" }>, indent: n
   const baseIndent = " ".repeat(indent);
   const propertyIndent = " ".repeat(indent + 2);
   const properties = schema.properties
-    .map(({ key, schema: propertySchema }) => {
-      return `${propertyIndent}${renderPropertyKey(key)}: ${renderSchema(propertySchema, indent + 2)},`;
+    .map(({ key, schema: propertySchema, optional }) => {
+      let rendered = renderSchema(propertySchema, indent + 2);
+      if (optional) {
+        rendered += ".optional()";
+      }
+      return `${propertyIndent}${renderPropertyKey(key)}: ${rendered},`;
     })
     .join("\n");
 
