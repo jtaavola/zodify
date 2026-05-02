@@ -24,7 +24,8 @@ async function promptObjectMode(): Promise<ObjectMode> {
   const ttyInput = new ReadStream(fd);
   const answer = await select<ObjectMode>(
     {
-      message: "Object mode?",
+      message:
+        "Object mode? strict = reject unknown keys, loose = allow unknown keys",
       choices: [
         { name: "strict", value: "strict" },
         { name: "loose", value: "loose" },
