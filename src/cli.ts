@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import { inferSchema, type JsonValue } from "./infer.js";
+import { renderModule } from "./render.js";
+
 const usage = `Usage: cat response.json | zodify`;
 
 async function readStdin(): Promise<string> {
@@ -27,8 +30,10 @@ async function main(): Promise<void> {
     return;
   }
 
+  let value: JsonValue;
+
   try {
-    JSON.parse(input);
+    value = JSON.parse(input) as JsonValue;
   } catch (error) {
     console.error("Error: Could not parse JSON input.");
     console.error(error instanceof Error ? error.message : String(error));
@@ -36,7 +41,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log("Parsed JSON successfully.");
+  console.log(renderModule(inferSchema(value)));
 }
 
 main().catch((error: unknown) => {
