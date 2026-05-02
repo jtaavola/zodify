@@ -2,9 +2,10 @@
 
 import { openSync } from "fs";
 import { ReadStream } from "tty";
-import { select } from "@inquirer/prompts";
+import { checkbox, select } from "@inquirer/prompts";
 import { AbortPromptError, CancelPromptError, ExitPromptError } from "@inquirer/core";
-import { hasObjects, inferSchema, type JsonValue } from "./infer.js";
+import { hasObjects, inferSchema, type JsonValue, type SchemaNode } from "./infer.js";
+import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
 import { renderModule, type ObjectMode } from "./render.js";
 
 const usage = `Usage: cat response.json | zodify`;
@@ -34,6 +35,34 @@ async function promptObjectMode(): Promise<ObjectMode> {
       { input: ttyInput, output: process.stderr }
     );
     return answer;
+  } finally {
+    ttyInput.destroy();
+  }
+}
+
+async function promptOptionalFields(schema: SchemaNode): Promise<Set<string>> {
+  const paths = collectOptionalPaths(schema);
+  if (paths.length === 0) {
+    return new Set();
+  }
+
+  const fd = openSync("/dev/tty", "r");
+  const ttyInput = new ReadStream(fd);
+  try {
+    const choices = paths.map(({ path, optional }) => ({
+      name: path,
+      value: path,
+      checked: optional,
+    }));
+
+    const selected = await checkbox<string>(
+      {
+        message: "Optional fields",
+        choices,
+      },
+      { input: ttyInput, output: process.stderr }
+    );
+    return new Set(selected);
   } finally {
     ttyInput.destroy();
   }
@@ -72,7 +101,10 @@ async function main(): Promise<void> {
     objectMode = await promptObjectMode();
   }
 
-  console.log(renderModule(schema, objectMode));
+  const optionalPaths = await promptOptionalFields(schema);
+  const finalSchema = applyOptionalPaths(schema, optionalPaths);
+
+  console.log(renderModule(finalSchema, objectMode));
 }
 
 main().catch((error: unknown) => {
