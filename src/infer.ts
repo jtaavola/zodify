@@ -1,11 +1,11 @@
 export type SchemaNode =
-  | { kind: "string" }
-  | { kind: "number" }
-  | { kind: "boolean" }
-  | { kind: "null" }
-  | { kind: "unknown" }
-  | { kind: "array"; items: SchemaNode }
-  | { kind: "object"; properties: ObjectProperty[] };
+  | { kind: "string"; nullable?: boolean }
+  | { kind: "number"; nullable?: boolean }
+  | { kind: "boolean"; nullable?: boolean }
+  | { kind: "null"; nullable?: boolean }
+  | { kind: "unknown"; nullable?: boolean }
+  | { kind: "array"; items: SchemaNode; nullable?: boolean }
+  | { kind: "object"; properties: ObjectProperty[]; nullable?: boolean };
 
 export interface ObjectProperty {
   key: string;
@@ -56,23 +56,33 @@ function inferArray(items: JsonValue[]): SchemaNode {
   }
 
   const schemas = items.map((item) => inferSchema(item));
+  const hasNull = schemas.some((s) => s.kind === "null");
+  const nonNullSchemas = schemas.filter((s) => s.kind !== "null");
+  const nonNullItems = items.filter((item) => item !== null);
 
-  const allObjects = schemas.every((s) => s.kind === "object");
-  if (allObjects) {
-    return { kind: "array", items: mergeObjectArray(items) };
+  if (nonNullSchemas.length === 0) {
+    return { kind: "array", items: { kind: "null" } };
   }
 
-  const firstKind = schemas[0]!.kind;
-  const allSameKind = schemas.every((s) => s.kind === firstKind);
+  const allObjects = nonNullSchemas.every((s) => s.kind === "object");
+  if (allObjects) {
+    const merged = mergeObjectArray(nonNullItems);
+    return { kind: "array", items: hasNull ? { ...merged, nullable: true } : merged };
+  }
+
+  const firstKind = nonNullSchemas[0]!.kind;
+  const allSameKind = nonNullSchemas.every((s) => s.kind === firstKind);
   if (allSameKind) {
     if (firstKind === "array") {
       const nestedItems: JsonValue[] = [];
-      for (const item of items) {
+      for (const item of nonNullItems) {
         nestedItems.push(...(item as JsonValue[]));
       }
-      return { kind: "array", items: inferArray(nestedItems) };
+      const inner = inferArray(nestedItems);
+      return { kind: "array", items: hasNull ? { ...inner, nullable: true } : inner };
     }
-    return { kind: "array", items: schemas[0]! };
+    const baseSchema = nonNullSchemas[0]!;
+    return { kind: "array", items: hasNull ? { ...baseSchema, nullable: true } : baseSchema };
   }
 
   return { kind: "array", items: { kind: "unknown" } };
@@ -134,9 +144,22 @@ function mergeSchemas(a: SchemaNode, b: SchemaNode): SchemaNode {
   if (a.kind === "unknown" || b.kind === "unknown") {
     return { kind: "unknown" };
   }
+
+  if (a.kind === "null" && b.kind === "null") {
+    return { kind: "null" };
+  }
+  if (a.kind === "null") {
+    return { ...b, nullable: true } as SchemaNode;
+  }
+  if (b.kind === "null") {
+    return { ...a, nullable: true } as SchemaNode;
+  }
+
   if (a.kind !== b.kind) {
     return { kind: "unknown" };
   }
+
+  const nullable = a.nullable || b.nullable;
 
   if (a.kind === "object" && b.kind === "object") {
     const aMap = new Map(a.properties.map((p) => [p.key, p]));
@@ -166,12 +189,25 @@ function mergeSchemas(a: SchemaNode, b: SchemaNode): SchemaNode {
       }
     }
 
-    return { kind: "object", properties };
+    const result: SchemaNode = { kind: "object", properties };
+    if (nullable) {
+      result.nullable = true;
+    }
+    return result;
   }
 
   if (a.kind === "array" && b.kind === "array") {
-    return { kind: "array", items: mergeSchemas(a.items, b.items) };
+    const items = mergeSchemas(a.items, b.items);
+    const result: SchemaNode = { kind: "array", items };
+    if (nullable) {
+      result.nullable = true;
+    }
+    return result;
   }
 
-  return a;
+  const result: SchemaNode = { kind: a.kind };
+  if (nullable) {
+    result.nullable = true;
+  }
+  return result;
 }

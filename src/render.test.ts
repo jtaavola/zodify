@@ -127,4 +127,51 @@ export const schema = z.strictObject({
 });
 `);
   });
+
+  it("renders nullable schemas", () => {
+    expect(renderSchema({ kind: "string", nullable: true })).toBe("z.string().nullable()");
+    expect(renderSchema({ kind: "number", nullable: true })).toBe("z.number().nullable()");
+    expect(renderSchema({ kind: "boolean", nullable: true })).toBe("z.boolean().nullable()");
+  });
+
+  it("renders nullable and optional object properties", () => {
+    const schema = inferSchema([
+      { name: "Ada" },
+      { name: null },
+      {},
+    ]);
+
+    expect(renderSchema(schema)).toBe(`z.array(
+  z.strictObject({
+    name: z.string().nullable().optional(),
+  })
+)`);
+  });
+
+  it("renders arrays with nullable items", () => {
+    expect(renderSchema({ kind: "array", items: { kind: "string", nullable: true } })).toBe(
+      "z.array(z.string().nullable())"
+    );
+  });
+
+  it("renders a complete module with nullable fields", () => {
+    const schema = inferSchema({
+      users: [
+        { name: "Ada" },
+        { name: null },
+        {},
+      ],
+    });
+
+    expect(renderModule(schema)).toBe(`import { z } from "zod";
+
+export const schema = z.strictObject({
+  users: z.array(
+    z.strictObject({
+      name: z.string().nullable().optional(),
+    })
+  ),
+});
+`);
+  });
 });

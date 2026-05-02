@@ -5,22 +5,32 @@ export function renderModule(schema: SchemaNode): string {
 }
 
 export function renderSchema(schema: SchemaNode, indent = 0): string {
+  let result: string;
   switch (schema.kind) {
     case "string":
-      return "z.string()";
+      result = "z.string()";
+      break;
     case "number":
-      return "z.number()";
+      result = "z.number()";
+      break;
     case "boolean":
-      return "z.boolean()";
+      result = "z.boolean()";
+      break;
     case "null":
       return "z.null()";
     case "unknown":
       return "z.unknown()";
     case "array":
-      return renderArray(schema, indent);
+      result = renderArray(schema, indent);
+      break;
     case "object":
-      return renderObject(schema, indent);
+      result = renderObject(schema, indent);
+      break;
   }
+  if (schema.nullable) {
+    result += ".nullable()";
+  }
+  return result;
 }
 
 function renderArray(schema: Extract<SchemaNode, { kind: "array" }>, indent: number): string {

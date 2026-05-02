@@ -128,4 +128,79 @@ describe("inferSchema", () => {
       },
     });
   });
+
+  it("infers nullable fields in merged objects", () => {
+    const schema = inferSchema([
+      { name: "Ada" },
+      { name: null },
+    ]);
+
+    expect(schema).toEqual({
+      kind: "array",
+      items: {
+        kind: "object",
+        properties: [
+          { key: "name", schema: { kind: "string", nullable: true } },
+        ],
+      },
+    });
+  });
+
+  it("infers nullable and optional fields when value is null or missing", () => {
+    const schema = inferSchema([
+      { name: "Ada" },
+      { name: null },
+      {},
+    ]);
+
+    expect(schema).toEqual({
+      kind: "array",
+      items: {
+        kind: "object",
+        properties: [
+          { key: "name", schema: { kind: "string", nullable: true }, optional: true },
+        ],
+      },
+    });
+  });
+
+  it("infers homogeneous arrays with null items as nullable", () => {
+    expect(inferSchema(["a", null])).toEqual({
+      kind: "array",
+      items: { kind: "string", nullable: true },
+    });
+    expect(inferSchema([1, null])).toEqual({
+      kind: "array",
+      items: { kind: "number", nullable: true },
+    });
+    expect(inferSchema([true, null])).toEqual({
+      kind: "array",
+      items: { kind: "boolean", nullable: true },
+    });
+  });
+
+  it("infers arrays with literal null items as nullable objects when all non-null items are objects", () => {
+    const schema = inferSchema([
+      { id: "1" },
+      null,
+    ]);
+
+    expect(schema).toEqual({
+      kind: "array",
+      items: {
+        kind: "object",
+        properties: [
+          { key: "id", schema: { kind: "string" } },
+        ],
+        nullable: true,
+      },
+    });
+  });
+
+  it("preserves mixed arrays with conflicting non-null types as unknown even with null", () => {
+    expect(inferSchema([1, "a", null])).toEqual({
+      kind: "array",
+      items: { kind: "unknown" },
+    });
+  });
 });
