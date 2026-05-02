@@ -166,4 +166,57 @@ describe("applyOptionalPaths", () => {
       ],
     });
   });
+
+  it("escapes keys containing dots to avoid ambiguous paths", () => {
+    const schema = inferSchema({ "a.b": { c: 1 } });
+    expect(collectOptionalPaths(schema)).toEqual([
+      { path: "a\\.b", optional: false },
+      { path: "a\\.b.c", optional: false },
+    ]);
+  });
+
+  it("distinguishes dotted keys from nested objects after escaping", () => {
+    const dotted = inferSchema({ "a.b": { c: 1 } });
+    const nested = inferSchema({ a: { b: { c: 1 } } });
+
+    const dottedPaths = collectOptionalPaths(dotted).map((p) => p.path);
+    const nestedPaths = collectOptionalPaths(nested).map((p) => p.path);
+
+    expect(dottedPaths).toEqual(["a\\.b", "a\\.b.c"]);
+    expect(nestedPaths).toEqual(["a", "a.b", "a.b.c"]);
+    expect(dottedPaths).not.toEqual(expect.arrayContaining(nestedPaths));
+  });
+
+  it("escapes keys containing brackets to avoid ambiguous array notation", () => {
+    const schema = inferSchema({ "a[]": { b: 1 } });
+    expect(collectOptionalPaths(schema)).toEqual([
+      { path: "a\\[\\]", optional: false },
+      { path: "a\\[\\].b", optional: false },
+    ]);
+  });
+
+  it("applies optional selections correctly with escaped keys", () => {
+    const schema = inferSchema({ "a.b": { c: 1 } });
+    const result = applyOptionalPaths(schema, new Set(["a\\.b.c"]));
+    expect(result).toEqual({
+      kind: "object",
+      properties: [
+        {
+          key: "a.b",
+          schema: {
+            kind: "object",
+            properties: [{ key: "c", schema: { kind: "number" }, optional: true }],
+          },
+        },
+      ],
+    });
+  });
+
+  it("escapes backslashes in keys", () => {
+    const schema = inferSchema({ "a\\b": { c: 1 } });
+    expect(collectOptionalPaths(schema)).toEqual([
+      { path: "a\\\\b", optional: false },
+      { path: "a\\\\b.c", optional: false },
+    ]);
+  });
 });
