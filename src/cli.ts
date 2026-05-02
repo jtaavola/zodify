@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
-import { inferSchema, type JsonValue } from "./infer.js";
-import { renderModule } from "./render.js";
+import { openSync } from "fs";
+import { ReadStream } from "tty";
+import { select } from "@inquirer/prompts";
+import { AbortPromptError, CancelPromptError, ExitPromptError } from "@inquirer/core";
+import { hasObjects, inferSchema, type JsonValue } from "./infer.js";
+import { renderModule, type ObjectMode } from "./render.js";
 
 const usage = `Usage: cat response.json | zodify`;
 
@@ -13,6 +17,26 @@ async function readStdin(): Promise<string> {
   }
 
   return Buffer.concat(chunks).toString("utf8");
+}
+
+async function promptObjectMode(): Promise<ObjectMode> {
+  const fd = openSync("/dev/tty", "r");
+  const ttyInput = new ReadStream(fd);
+  try {
+    const answer = await select<ObjectMode>(
+      {
+        message: "Object mode",
+        choices: [
+          { name: "strict", value: "strict", description: "Reject unknown keys" },
+          { name: "loose", value: "loose", description: "Allow unknown keys" },
+        ],
+      },
+      { input: ttyInput, output: process.stderr }
+    );
+    return answer;
+  } finally {
+    ttyInput.destroy();
+  }
 }
 
 async function main(): Promise<void> {
@@ -41,10 +65,26 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log(renderModule(inferSchema(value)));
+  const schema = inferSchema(value);
+
+  let objectMode: ObjectMode = "strict";
+  if (hasObjects(schema)) {
+    objectMode = await promptObjectMode();
+  }
+
+  console.log(renderModule(schema, objectMode));
 }
 
 main().catch((error: unknown) => {
+  if (
+    error instanceof CancelPromptError ||
+    error instanceof AbortPromptError ||
+    error instanceof ExitPromptError
+  ) {
+    console.error("Cancelled.");
+    process.exitCode = 1;
+    return;
+  }
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
