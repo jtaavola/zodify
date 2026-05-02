@@ -1,5 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { inferSchema } from "./infer.js";
+import { hasObjects, inferSchema } from "./infer.js";
+
+describe("hasObjects", () => {
+  it("returns false for primitives", () => {
+    expect(hasObjects({ kind: "string" })).toBe(false);
+    expect(hasObjects({ kind: "number" })).toBe(false);
+    expect(hasObjects({ kind: "boolean" })).toBe(false);
+    expect(hasObjects({ kind: "null" })).toBe(false);
+    expect(hasObjects({ kind: "unknown" })).toBe(false);
+  });
+
+  it("returns true for objects", () => {
+    expect(hasObjects({ kind: "object", properties: [] })).toBe(true);
+  });
+
+  it("returns true for nested objects in arrays", () => {
+    expect(hasObjects({ kind: "array", items: { kind: "object", properties: [] } })).toBe(true);
+  });
+
+  it("returns false for arrays of primitives", () => {
+    expect(hasObjects({ kind: "array", items: { kind: "string" } })).toBe(false);
+  });
+});
 
 describe("inferSchema", () => {
   it("infers primitive JSON values", () => {

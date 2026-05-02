@@ -21,6 +21,16 @@ export type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
+export function hasObjects(schema: SchemaNode): boolean {
+  if (schema.kind === "object") {
+    return true;
+  }
+  if (schema.kind === "array") {
+    return hasObjects(schema.items);
+  }
+  return false;
+}
+
 export function inferSchema(value: JsonValue): SchemaNode {
   if (value === null) {
     return { kind: "null" };

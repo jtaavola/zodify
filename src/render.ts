@@ -1,10 +1,19 @@
 import type { SchemaNode } from "./infer.js";
 
-export function renderModule(schema: SchemaNode): string {
-  return `import { z } from "zod";\n\nexport const schema = ${renderSchema(schema)};\n`;
+export type ObjectMode = "strict" | "loose";
+
+export function renderModule(
+  schema: SchemaNode,
+  objectMode: ObjectMode = "strict"
+): string {
+  return `import { z } from "zod";\n\nexport const schema = ${renderSchema(schema, 0, objectMode)};\n`;
 }
 
-export function renderSchema(schema: SchemaNode, indent = 0): string {
+export function renderSchema(
+  schema: SchemaNode,
+  indent = 0,
+  objectMode: ObjectMode = "strict"
+): string {
   let result: string;
   switch (schema.kind) {
     case "string":
@@ -21,10 +30,10 @@ export function renderSchema(schema: SchemaNode, indent = 0): string {
     case "unknown":
       return "z.unknown()";
     case "array":
-      result = renderArray(schema, indent);
+      result = renderArray(schema, indent, objectMode);
       break;
     case "object":
-      result = renderObject(schema, indent);
+      result = renderObject(schema, indent, objectMode);
       break;
   }
   if (schema.nullable) {
@@ -33,24 +42,34 @@ export function renderSchema(schema: SchemaNode, indent = 0): string {
   return result;
 }
 
-function renderArray(schema: Extract<SchemaNode, { kind: "array" }>, indent: number): string {
-  const inner = renderSchema(schema.items, indent + 2);
+function renderArray(
+  schema: Extract<SchemaNode, { kind: "array" }>,
+  indent: number,
+  objectMode: ObjectMode
+): string {
+  const inner = renderSchema(schema.items, indent + 2, objectMode);
   if (inner.includes("\n")) {
     return `z.array(\n${" ".repeat(indent + 2)}${inner}\n${" ".repeat(indent)})`;
   }
   return `z.array(${inner})`;
 }
 
-function renderObject(schema: Extract<SchemaNode, { kind: "object" }>, indent: number): string {
+function renderObject(
+  schema: Extract<SchemaNode, { kind: "object" }>,
+  indent: number,
+  objectMode: ObjectMode
+): string {
+  const objectFn = objectMode === "strict" ? "z.strictObject" : "z.looseObject";
+
   if (schema.properties.length === 0) {
-    return "z.strictObject({})";
+    return `${objectFn}({})`;
   }
 
   const baseIndent = " ".repeat(indent);
   const propertyIndent = " ".repeat(indent + 2);
   const properties = schema.properties
     .map(({ key, schema: propertySchema, optional }) => {
-      let rendered = renderSchema(propertySchema, indent + 2);
+      let rendered = renderSchema(propertySchema, indent + 2, objectMode);
       if (optional) {
         rendered += ".optional()";
       }
@@ -58,7 +77,7 @@ function renderObject(schema: Extract<SchemaNode, { kind: "object" }>, indent: n
     })
     .join("\n");
 
-  return `z.strictObject({\n${properties}\n${baseIndent}})`;
+  return `${objectFn}({\n${properties}\n${baseIndent}})`;
 }
 
 function renderPropertyKey(key: string): string {

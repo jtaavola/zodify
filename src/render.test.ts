@@ -20,6 +20,16 @@ describe("renderSchema", () => {
 })`);
   });
 
+  it("renders loose objects preserving property order", () => {
+    const schema = inferSchema({ id: "123", active: true, count: 2 });
+
+    expect(renderSchema(schema, 0, "loose")).toBe(`z.looseObject({
+  id: z.string(),
+  active: z.boolean(),
+  count: z.number(),
+})`);
+  });
+
   it("quotes invalid property names only", () => {
     const schema = {
       kind: "object" as const,
@@ -45,6 +55,19 @@ describe("renderSchema", () => {
     expect(renderModule(schema)).toBe(`import { z } from "zod";
 
 export const schema = z.strictObject({
+  id: z.string(),
+  active: z.boolean(),
+  "first-name": z.string(),
+});
+`);
+  });
+
+  it("renders a complete TypeScript module in loose mode", () => {
+    const schema = inferSchema({ id: "123", active: true, "first-name": "Ada" });
+
+    expect(renderModule(schema, "loose")).toBe(`import { z } from "zod";
+
+export const schema = z.looseObject({
   id: z.string(),
   active: z.boolean(),
   "first-name": z.string(),
@@ -86,6 +109,21 @@ export const schema = z.strictObject({
 )`);
   });
 
+  it("renders arrays of objects in loose mode", () => {
+    const schema = inferSchema([
+      { id: "1", name: "Ada" },
+      { id: "2", email: "ada@example.com" },
+    ]);
+
+    expect(renderSchema(schema, 0, "loose")).toBe(`z.array(
+  z.looseObject({
+    id: z.string(),
+    name: z.string().optional(),
+    email: z.string().optional(),
+  })
+)`);
+  });
+
   it("renders arrays with conflicting field types", () => {
     const schema = inferSchema([
       { id: "1", age: 42 },
@@ -119,6 +157,28 @@ export const schema = z.strictObject({
 export const schema = z.strictObject({
   users: z.array(
     z.strictObject({
+      id: z.string(),
+      name: z.string().optional(),
+      email: z.string().optional(),
+    })
+  ),
+});
+`);
+  });
+
+  it("renders a complete module with arrays in loose mode", () => {
+    const schema = inferSchema({
+      users: [
+        { id: "1", name: "Ada" },
+        { id: "2", email: "ada@example.com" },
+      ],
+    });
+
+    expect(renderModule(schema, "loose")).toBe(`import { z } from "zod";
+
+export const schema = z.looseObject({
+  users: z.array(
+    z.looseObject({
       id: z.string(),
       name: z.string().optional(),
       email: z.string().optional(),
@@ -173,5 +233,11 @@ export const schema = z.strictObject({
   ),
 });
 `);
+  });
+
+  it("renders empty objects as z.looseObject({}) in loose mode", () => {
+    expect(renderSchema({ kind: "object", properties: [] }, 0, "loose")).toBe(
+      "z.looseObject({})"
+    );
   });
 });
