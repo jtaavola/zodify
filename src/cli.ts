@@ -22,17 +22,21 @@ async function readStdin(): Promise<string> {
 async function promptObjectMode(): Promise<ObjectMode> {
   const fd = openSync("/dev/tty", "r");
   const ttyInput = new ReadStream(fd);
-  const answer = await select<ObjectMode>(
-    {
-      message: "Object mode",
-      choices: [
-        { name: "strict", value: "strict", description: "Reject unknown keys" },
-        { name: "loose", value: "loose", description: "Allow unknown keys" },
-      ],
-    },
-    { input: ttyInput, output: process.stderr }
-  );
-  return answer;
+  try {
+    const answer = await select<ObjectMode>(
+      {
+        message: "Object mode",
+        choices: [
+          { name: "strict", value: "strict", description: "Reject unknown keys" },
+          { name: "loose", value: "loose", description: "Allow unknown keys" },
+        ],
+      },
+      { input: ttyInput, output: process.stderr }
+    );
+    return answer;
+  } finally {
+    ttyInput.destroy();
+  }
 }
 
 async function main(): Promise<void> {
