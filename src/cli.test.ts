@@ -341,7 +341,7 @@ describe("CLI integration", () => {
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
     expect(stdout).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.strictObject({\n  name: z.string().optional(),\n  age: z.number().optional(),\n});\n`,
+      `import { z } from "zod";\n\nconst schema = z.strictObject({\n  name: z.string().optional(),\n  age: z.number().optional(),\n});\n`,
     );
   });
 
@@ -386,7 +386,7 @@ describe("CLI integration", () => {
       expect(exitCode).toBe(0);
       expect(stderr).toBe("");
       expect(stdout).toBe(
-        `import { z } from "zod";\n\nexport const schema = z.looseObject({\n  id: z.number().optional(),\n});\n`,
+        `import { z } from "zod";\n\nconst schema = z.looseObject({\n  id: z.number().optional(),\n});\n`,
       );
     } finally {
       unlinkSync(tmpFile);
