@@ -1,4 +1,4 @@
-# zodify-json
+# zodify
 
 Convert sample JSON responses into [Zod](https://zod.dev) schemas.
 
