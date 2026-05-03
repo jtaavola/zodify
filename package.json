@@ -1,7 +1,13 @@
 {
-  "name": "zodify",
+  "name": "zodify-json",
   "version": "0.1.0",
   "description": "Convert sample JSON responses into Zod schemas.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jtaavola/zodify.git"
+  },
+  "keywords": ["zod", "json", "schema", "cli", "generator", "typescript"],
+  "files": ["dist", "README.md", "LICENSE"],
   "type": "module",
   "bin": {
     "zodify": "./dist/cli.js"
