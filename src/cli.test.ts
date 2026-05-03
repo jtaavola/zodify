@@ -64,6 +64,27 @@ describe("parseArgs", () => {
     expect(result.nestedMode).toBe("separate");
     expect(result.optionalAll).toBe(true);
   });
+
+  it("parses --non-interactive", () => {
+    const result = parseArgs(["node", "cli", "--non-interactive"]);
+    expect(result.nonInteractive).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
+  it("parses --non-interactive with other flags", () => {
+    const result = parseArgs([
+      "node",
+      "cli",
+      "--non-interactive",
+      "--object-mode=strict",
+      "--nested-mode=nested",
+      "--optional-all",
+    ]);
+    expect(result.nonInteractive).toBe(true);
+    expect(result.objectMode).toBe("strict");
+    expect(result.nestedMode).toBe("nested");
+    expect(result.optionalAll).toBe(true);
+  });
 });
 
 describe("--optional-all integration", () => {
