@@ -10,7 +10,8 @@
     "build": "tsup",
     "test": "vitest run",
     "check": "biome check",
-    "fix": "biome check --fix"
+    "fix": "biome check --fix",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.14",
