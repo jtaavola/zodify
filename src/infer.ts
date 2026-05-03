@@ -92,10 +92,13 @@ function inferArray(items: JsonValue[]): SchemaNode {
   const allObjects = nonNullSchemas.every((s) => s.kind === "object");
   if (allObjects) {
     const merged = mergeObjectArray(nonNullItems);
-    return { kind: "array", items: hasNull ? { ...merged, nullable: true } : merged };
+    return {
+      kind: "array",
+      items: hasNull ? { ...merged, nullable: true } : merged,
+    };
   }
 
-  const firstKind = nonNullSchemas[0]!.kind;
+  const firstKind = nonNullSchemas[0]?.kind;
   const allSameKind = nonNullSchemas.every((s) => s.kind === firstKind);
   if (allSameKind) {
     if (firstKind === "array") {
@@ -104,10 +107,19 @@ function inferArray(items: JsonValue[]): SchemaNode {
         nestedItems.push(...(item as JsonValue[]));
       }
       const inner = inferArray(nestedItems);
-      return { kind: "array", items: hasNull ? { ...inner, nullable: true } : inner };
+      return {
+        kind: "array",
+        items: hasNull ? { ...inner, nullable: true } : inner,
+      };
     }
-    const baseSchema = nonNullSchemas[0]!;
-    return { kind: "array", items: hasNull ? { ...baseSchema, nullable: true } : baseSchema };
+    const baseSchema = nonNullSchemas[0];
+    if (!baseSchema) {
+      throw new Error("unreachable: nonNullSchemas is non-empty");
+    }
+    return {
+      kind: "array",
+      items: hasNull ? { ...baseSchema, nullable: true } : baseSchema,
+    };
   }
 
   return { kind: "array", items: { kind: "unknown" } };
@@ -149,9 +161,10 @@ function mergeObjectArray(items: JsonValue[]): SchemaNode {
     if (schemasForKey.length === 0) {
       mergedSchema = { kind: "unknown" };
     } else {
-      mergedSchema = schemasForKey[0]!;
-      for (let i = 1; i < schemasForKey.length; i++) {
-        mergedSchema = mergeSchemas(mergedSchema, schemasForKey[i]!);
+      const [first, ...rest] = schemasForKey;
+      mergedSchema = first;
+      for (const s of rest) {
+        mergedSchema = mergeSchemas(mergedSchema, s);
       }
     }
 
@@ -202,15 +215,20 @@ function mergeSchemas(a: SchemaNode, b: SchemaNode): SchemaNode {
 
       if (aProp && bProp) {
         const optional = aProp.optional || bProp.optional;
-        const prop: ObjectProperty = { key, schema: mergeSchemas(aProp.schema, bProp.schema) };
+        const prop: ObjectProperty = {
+          key,
+          schema: mergeSchemas(aProp.schema, bProp.schema),
+        };
         if (optional) {
           prop.optional = true;
         }
         properties.push(prop);
       } else if (aProp) {
         properties.push({ key, schema: aProp.schema, optional: true });
+      } else if (bProp) {
+        properties.push({ key, schema: bProp.schema, optional: true });
       } else {
-        properties.push({ key, schema: bProp!.schema, optional: true });
+        throw new Error("unreachable: key must exist in either a or b");
       }
     }
 
@@ -230,7 +248,9 @@ function mergeSchemas(a: SchemaNode, b: SchemaNode): SchemaNode {
     return result;
   }
 
-  const result: SchemaNode = { kind: a.kind as "string" | "number" | "boolean" };
+  const result: SchemaNode = {
+    kind: a.kind as "string" | "number" | "boolean",
+  };
   if (nullable) {
     result.nullable = true;
   }

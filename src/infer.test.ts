@@ -15,11 +15,15 @@ describe("hasObjects", () => {
   });
 
   it("returns true for nested objects in arrays", () => {
-    expect(hasObjects({ kind: "array", items: { kind: "object", properties: [] } })).toBe(true);
+    expect(
+      hasObjects({ kind: "array", items: { kind: "object", properties: [] } }),
+    ).toBe(true);
   });
 
   it("returns false for arrays of primitives", () => {
-    expect(hasObjects({ kind: "array", items: { kind: "string" } })).toBe(false);
+    expect(hasObjects({ kind: "array", items: { kind: "string" } })).toBe(
+      false,
+    );
   });
 });
 
@@ -40,7 +44,7 @@ describe("hasNestedObjects", () => {
           { key: "name", schema: { kind: "string" } },
           { key: "age", schema: { kind: "number" } },
         ],
-      })
+      }),
     ).toBe(false);
   });
 
@@ -58,7 +62,7 @@ describe("hasNestedObjects", () => {
             },
           },
         ],
-      })
+      }),
     ).toBe(true);
   });
 
@@ -67,12 +71,14 @@ describe("hasNestedObjects", () => {
       hasNestedObjects({
         kind: "array",
         items: { kind: "object", properties: [] },
-      })
+      }),
     ).toBe(true);
   });
 
   it("returns false for arrays of primitives", () => {
-    expect(hasNestedObjects({ kind: "array", items: { kind: "string" } })).toBe(false);
+    expect(hasNestedObjects({ kind: "array", items: { kind: "string" } })).toBe(
+      false,
+    );
   });
 
   it("returns true for nested arrays with objects", () => {
@@ -83,7 +89,7 @@ describe("hasNestedObjects", () => {
           kind: "array",
           items: { kind: "object", properties: [] },
         },
-      })
+      }),
     ).toBe(true);
   });
 });
@@ -101,7 +107,9 @@ describe("inferSchema", () => {
     expect(inferSchema("2024-01-15T09:30:00Z")).toEqual({ kind: "string" });
     expect(inferSchema("ada@example.com")).toEqual({ kind: "string" });
     expect(inferSchema("https://example.com")).toEqual({ kind: "string" });
-    expect(inferSchema("550e8400-e29b-41d4-a716-446655440000")).toEqual({ kind: "string" });
+    expect(inferSchema("550e8400-e29b-41d4-a716-446655440000")).toEqual({
+      kind: "string",
+    });
   });
 
   it("infers both true and false as broad boolean type", () => {
@@ -114,7 +122,9 @@ describe("inferSchema", () => {
   });
 
   it("infers object properties in input order", () => {
-    expect(inferSchema({ id: "123", active: true, count: 2, empty: null })).toEqual({
+    expect(
+      inferSchema({ id: "123", active: true, count: 2, empty: null }),
+    ).toEqual({
       kind: "object",
       properties: [
         { key: "id", schema: { kind: "string" } },
@@ -234,10 +244,7 @@ describe("inferSchema", () => {
   });
 
   it("infers nullable fields in merged objects", () => {
-    const schema = inferSchema([
-      { name: "Ada" },
-      { name: null },
-    ]);
+    const schema = inferSchema([{ name: "Ada" }, { name: null }]);
 
     expect(schema).toEqual({
       kind: "array",
@@ -251,18 +258,18 @@ describe("inferSchema", () => {
   });
 
   it("infers nullable and optional fields when value is null or missing", () => {
-    const schema = inferSchema([
-      { name: "Ada" },
-      { name: null },
-      {},
-    ]);
+    const schema = inferSchema([{ name: "Ada" }, { name: null }, {}]);
 
     expect(schema).toEqual({
       kind: "array",
       items: {
         kind: "object",
         properties: [
-          { key: "name", schema: { kind: "string", nullable: true }, optional: true },
+          {
+            key: "name",
+            schema: { kind: "string", nullable: true },
+            optional: true,
+          },
         ],
       },
     });
@@ -284,18 +291,13 @@ describe("inferSchema", () => {
   });
 
   it("infers arrays with literal null items as nullable objects when all non-null items are objects", () => {
-    const schema = inferSchema([
-      { id: "1" },
-      null,
-    ]);
+    const schema = inferSchema([{ id: "1" }, null]);
 
     expect(schema).toEqual({
       kind: "array",
       items: {
         kind: "object",
-        properties: [
-          { key: "id", schema: { kind: "string" } },
-        ],
+        properties: [{ key: "id", schema: { kind: "string" } }],
         nullable: true,
       },
     });
@@ -309,21 +311,36 @@ describe("inferSchema", () => {
   });
 
   it("infers arrays of arrays by flattening nested items", () => {
-    expect(inferSchema([[1, 2], [3, 4]])).toEqual({
+    expect(
+      inferSchema([
+        [1, 2],
+        [3, 4],
+      ]),
+    ).toEqual({
       kind: "array",
       items: { kind: "array", items: { kind: "number" } },
     });
   });
 
   it("infers arrays of arrays with mixed inner types as unknown", () => {
-    expect(inferSchema([[1, 2], ["a", "b"]])).toEqual({
+    expect(
+      inferSchema([
+        [1, 2],
+        ["a", "b"],
+      ]),
+    ).toEqual({
       kind: "array",
       items: { kind: "array", items: { kind: "unknown" } },
     });
   });
 
   it("infers arrays of arrays with nullable inner items", () => {
-    expect(inferSchema([[1, null], [3, 4]])).toEqual({
+    expect(
+      inferSchema([
+        [1, null],
+        [3, 4],
+      ]),
+    ).toEqual({
       kind: "array",
       items: { kind: "array", items: { kind: "number", nullable: true } },
     });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
 import { inferSchema } from "./infer.js";
+import { applyOptionalPaths, collectOptionalPaths } from "./paths.js";
 
 describe("collectOptionalPaths", () => {
   it("returns empty for primitives", () => {
@@ -43,10 +43,7 @@ describe("collectOptionalPaths", () => {
   });
 
   it("preselects inferred optional fields from merged arrays", () => {
-    const schema = inferSchema([
-      { id: "1", name: "Ada" },
-      { id: "2" },
-    ]);
+    const schema = inferSchema([{ id: "1", name: "Ada" }, { id: "2" }]);
     expect(collectOptionalPaths(schema)).toEqual([
       { path: "[].id", optional: false },
       { path: "[].name", optional: true },
@@ -79,10 +76,7 @@ describe("applyOptionalPaths", () => {
   });
 
   it("removes inferred optional when not selected", () => {
-    const schema = inferSchema([
-      { id: "1", name: "Ada" },
-      { id: "2" },
-    ]);
+    const schema = inferSchema([{ id: "1", name: "Ada" }, { id: "2" }]);
     const result = applyOptionalPaths(schema, new Set(["[].id"]));
     expect(result).toEqual({
       kind: "array",
@@ -97,18 +91,18 @@ describe("applyOptionalPaths", () => {
   });
 
   it("preserves nullable when applying optional", () => {
-    const schema = inferSchema([
-      { name: "Ada" },
-      { name: null },
-      {},
-    ]);
+    const schema = inferSchema([{ name: "Ada" }, { name: null }, {}]);
     const result = applyOptionalPaths(schema, new Set(["[].name"]));
     expect(result).toEqual({
       kind: "array",
       items: {
         kind: "object",
         properties: [
-          { key: "name", schema: { kind: "string", nullable: true }, optional: true },
+          {
+            key: "name",
+            schema: { kind: "string", nullable: true },
+            optional: true,
+          },
         ],
       },
     });
@@ -205,7 +199,9 @@ describe("applyOptionalPaths", () => {
           key: "a.b",
           schema: {
             kind: "object",
-            properties: [{ key: "c", schema: { kind: "number" }, optional: true }],
+            properties: [
+              { key: "c", schema: { kind: "number" }, optional: true },
+            ],
           },
         },
       ],
