@@ -79,8 +79,9 @@ async function promptOptionalFields(schema: SchemaNode): Promise<Set<string>> {
 
     const selected = await checkbox<string>(
       {
-        message: "Optional fields",
+        message: `Optional fields (${paths.length} total)`,
         loop: false,
+        pageSize: 15,
         choices,
       },
       { input: ttyInput, output: process.stderr }
