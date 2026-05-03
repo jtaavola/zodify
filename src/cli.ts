@@ -4,7 +4,7 @@ import { openSync } from "fs";
 import { ReadStream } from "tty";
 import { checkbox, select } from "@inquirer/prompts";
 import { AbortPromptError, CancelPromptError, ExitPromptError } from "@inquirer/core";
-import { hasObjects, inferSchema, type JsonValue, type SchemaNode } from "./infer.js";
+import { hasNestedObjects, hasObjects, inferSchema, type JsonValue, type SchemaNode } from "./infer.js";
 import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
 import { renderModule, type ObjectMode, type NestedMode } from "./render.js";
 
@@ -123,7 +123,9 @@ async function main(): Promise<void> {
   let nestedMode: NestedMode = "nested";
   if (hasObjects(schema)) {
     objectMode = await promptObjectMode();
-    nestedMode = await promptNestedMode();
+    if (hasNestedObjects(schema)) {
+      nestedMode = await promptNestedMode();
+    }
   }
 
   const optionalPaths = await promptOptionalFields(schema);

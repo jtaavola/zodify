@@ -31,6 +31,21 @@ export function hasObjects(schema: SchemaNode): boolean {
   return false;
 }
 
+export function hasNestedObjects(schema: SchemaNode): boolean {
+  if (schema.kind === "object") {
+    for (const prop of schema.properties) {
+      if (hasObjects(prop.schema)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  if (schema.kind === "array") {
+    return hasObjects(schema.items);
+  }
+  return false;
+}
+
 export function inferSchema(value: JsonValue): SchemaNode {
   if (value === null) {
     return { kind: "null" };

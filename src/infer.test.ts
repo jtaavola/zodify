@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasObjects, inferSchema } from "./infer.js";
+import { hasNestedObjects, hasObjects, inferSchema } from "./infer.js";
 
 describe("hasObjects", () => {
   it("returns false for primitives", () => {
@@ -20,6 +20,71 @@ describe("hasObjects", () => {
 
   it("returns false for arrays of primitives", () => {
     expect(hasObjects({ kind: "array", items: { kind: "string" } })).toBe(false);
+  });
+});
+
+describe("hasNestedObjects", () => {
+  it("returns false for primitives", () => {
+    expect(hasNestedObjects({ kind: "string" })).toBe(false);
+    expect(hasNestedObjects({ kind: "number" })).toBe(false);
+    expect(hasNestedObjects({ kind: "boolean" })).toBe(false);
+    expect(hasNestedObjects({ kind: "null" })).toBe(false);
+    expect(hasNestedObjects({ kind: "unknown" })).toBe(false);
+  });
+
+  it("returns false for flat objects", () => {
+    expect(
+      hasNestedObjects({
+        kind: "object",
+        properties: [
+          { key: "name", schema: { kind: "string" } },
+          { key: "age", schema: { kind: "number" } },
+        ],
+      })
+    ).toBe(false);
+  });
+
+  it("returns true for objects with nested objects", () => {
+    expect(
+      hasNestedObjects({
+        kind: "object",
+        properties: [
+          { key: "name", schema: { kind: "string" } },
+          {
+            key: "address",
+            schema: {
+              kind: "object",
+              properties: [{ key: "city", schema: { kind: "string" } }],
+            },
+          },
+        ],
+      })
+    ).toBe(true);
+  });
+
+  it("returns true for arrays containing objects", () => {
+    expect(
+      hasNestedObjects({
+        kind: "array",
+        items: { kind: "object", properties: [] },
+      })
+    ).toBe(true);
+  });
+
+  it("returns false for arrays of primitives", () => {
+    expect(hasNestedObjects({ kind: "array", items: { kind: "string" } })).toBe(false);
+  });
+
+  it("returns true for nested arrays with objects", () => {
+    expect(
+      hasNestedObjects({
+        kind: "array",
+        items: {
+          kind: "array",
+          items: { kind: "object", properties: [] },
+        },
+      })
+    ).toBe(true);
   });
 });
 
