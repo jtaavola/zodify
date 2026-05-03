@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import { resolve } from "path";
 import { parseArgs } from "./cli.js";
 import { inferSchema } from "./infer.js";
@@ -305,7 +305,6 @@ describe("--optional-all integration", () => {
 describe("CLI integration", () => {
   beforeAll(() => {
     // Ensure dist/cli.js is built before running integration tests
-    const { execSync } = require("child_process");
     execSync("npm run build", { cwd: process.cwd(), stdio: "ignore" });
   }, 30000);
 
