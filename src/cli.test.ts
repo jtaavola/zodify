@@ -176,6 +176,18 @@ describe("parseArgs", () => {
     expect(result.outputPath).toBe("-schema.ts");
     expect(result.error).toBeUndefined();
   });
+
+  it("returns help: true for -h", () => {
+    const result = parseArgs(["node", "cli", "-h"]);
+    expect(result.help).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
+  it("returns help: true for --help", () => {
+    const result = parseArgs(["node", "cli", "--help"]);
+    expect(result.help).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
 });
 
 describe("--optional-all integration", () => {

@@ -21,7 +21,7 @@ Options:
   -o, --output <file>                 Write schema to file instead of stdout
   -h, --help                          Show this help message`;
 
-export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive?: boolean; filePath?: string; outputPath?: string; error?: string } {
+export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive?: boolean; filePath?: string; outputPath?: string; error?: string; help?: boolean } {
   let objectMode: ObjectMode | undefined;
   let nestedMode: NestedMode | undefined;
   const optionalPaths = new Set<string>();
@@ -89,7 +89,7 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
       }
       outputPath = value;
     } else if (arg === "--help" || arg === "-h") {
-      return {};
+      return { help: true };
     } else if (!arg.startsWith("-")) {
       if (filePath) {
         return { error: `Unexpected extra argument: ${arg}` };
@@ -193,6 +193,11 @@ async function promptOptionalFields(schema: SchemaNode): Promise<Set<string>> {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv);
 
+  if (args.help) {
+    console.log(usage);
+    return;
+  }
+
   if (args.error) {
     console.error(`Error: ${args.error}`);
     console.error(usage);
@@ -218,6 +223,7 @@ async function main(): Promise<void> {
   }
 
   if (input.length === 0) {
+    console.error("Error: Empty input.");
     console.error(usage);
     process.exitCode = 1;
     return;
@@ -302,7 +308,7 @@ async function main(): Promise<void> {
   if (args.outputPath) {
     await writeFile(args.outputPath, output, "utf-8");
   } else {
-    console.log(output);
+    process.stdout.write(output);
   }
 }
 
