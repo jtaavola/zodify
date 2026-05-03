@@ -142,6 +142,40 @@ describe("parseArgs", () => {
     const result = parseArgs(["node", "cli", "a.json", "b.json"]);
     expect(result.error).toBe("Unexpected extra argument: b.json");
   });
+
+  it("parses -o as --output", () => {
+    const result = parseArgs(["node", "cli", "-o", "schema.ts"]);
+    expect(result.outputPath).toBe("schema.ts");
+    expect(result.error).toBeUndefined();
+  });
+
+  it("parses --output as --output", () => {
+    const result = parseArgs(["node", "cli", "--output", "schema.ts"]);
+    expect(result.outputPath).toBe("schema.ts");
+    expect(result.error).toBeUndefined();
+  });
+
+  it("parses --output=schema.ts", () => {
+    const result = parseArgs(["node", "cli", "--output=schema.ts"]);
+    expect(result.outputPath).toBe("schema.ts");
+    expect(result.error).toBeUndefined();
+  });
+
+  it("returns an error for --output without a value", () => {
+    const result = parseArgs(["node", "cli", "--output"]);
+    expect(result.error).toBe("--output requires a file path argument.");
+  });
+
+  it("returns an error for --output= without a value", () => {
+    const result = parseArgs(["node", "cli", "--output="]);
+    expect(result.error).toBe("--output= requires a file path argument.");
+  });
+
+  it("allows output paths starting with a dash", () => {
+    const result = parseArgs(["node", "cli", "-o", "-schema.ts"]);
+    expect(result.outputPath).toBe("-schema.ts");
+    expect(result.error).toBeUndefined();
+  });
 });
 
 describe("--optional-all integration", () => {
