@@ -1,7 +1,39 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
+import { spawn } from "child_process";
+import { resolve } from "path";
 import { parseArgs } from "./cli.js";
 import { inferSchema } from "./infer.js";
 import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
+
+const CLI_PATH = resolve("dist/cli.js");
+
+function runCLI(args: string[], stdin?: string): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("node", [CLI_PATH, ...args], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data) => {
+      stdout += data;
+    });
+    proc.stderr.on("data", (data) => {
+      stderr += data;
+    });
+
+    proc.on("close", (exitCode) => {
+      resolve({ stdout, stderr, exitCode });
+    });
+    proc.on("error", reject);
+
+    if (stdin !== undefined) {
+      proc.stdin.write(stdin);
+    }
+    proc.stdin.end();
+  });
+}
 
 describe("parseArgs", () => {
   it("parses --optional-all", () => {
@@ -188,6 +220,16 @@ describe("parseArgs", () => {
     expect(result.help).toBe(true);
     expect(result.error).toBeUndefined();
   });
+
+  it("returns an error for invalid --object-mode value", () => {
+    const result = parseArgs(["node", "cli", "--object-mode=invalid"]);
+    expect(result.error).toBe('Invalid --object-mode: "invalid". Must be "strict" or "loose".');
+  });
+
+  it("returns an error for invalid --nested-mode value", () => {
+    const result = parseArgs(["node", "cli", "--nested-mode=invalid"]);
+    expect(result.error).toBe('Invalid --nested-mode: "invalid". Must be "nested" or "separate".');
+  });
 });
 
 describe("--optional-all integration", () => {
@@ -257,5 +299,79 @@ describe("--optional-all integration", () => {
         ],
       },
     });
+  });
+});
+
+describe("CLI integration", () => {
+  beforeAll(() => {
+    // Ensure dist/cli.js is built before running integration tests
+    const { execSync } = require("child_process");
+    execSync("npm run build", { cwd: process.cwd(), stdio: "ignore" });
+  }, 30000);
+
+  it("prints schema for valid JSON via stdin", async () => {
+    const { stdout, stderr, exitCode } = await runCLI(
+      ["-n", "--object-mode=strict", "-a"],
+      '{"name":"Ada","age":36}'
+    );
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(stdout).toBe(`import { z } from "zod";\n\nexport const schema = z.strictObject({\n  name: z.string().optional(),\n  age: z.number().optional(),\n});\n`);
+  });
+
+  it("exits 1 for invalid JSON via stdin", async () => {
+    const { stdout, stderr, exitCode } = await runCLI(
+      ["-n", "--object-mode=strict", "-a"],
+      "not json"
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Could not parse JSON input");
+    expect(stdout).toBe("");
+  });
+
+  it("exits 1 for empty stdin", async () => {
+    const { stdout, stderr, exitCode } = await runCLI(
+      ["-n", "--object-mode=strict", "-a"],
+      ""
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Empty input");
+    expect(stdout).toBe("");
+  });
+
+  it("prints help and exits 0 for --help", async () => {
+    const { stdout, stderr, exitCode } = await runCLI(["--help"]);
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(stdout).toContain("Usage: zodify");
+  });
+
+  it("prints schema from a file", async () => {
+    const { writeFileSync, unlinkSync } = require("fs");
+    const tmpFile = resolve("tmp-test-input.json");
+    writeFileSync(tmpFile, '{"id":1}', "utf-8");
+    try {
+      const { stdout, stderr, exitCode } = await runCLI([
+        "-n",
+        "--object-mode=loose",
+        "-a",
+        tmpFile,
+      ]);
+      expect(exitCode).toBe(0);
+      expect(stderr).toBe("");
+      expect(stdout).toBe(`import { z } from "zod";\n\nexport const schema = z.looseObject({\n  id: z.number().optional(),\n});\n`);
+    } finally {
+      unlinkSync(tmpFile);
+    }
+  });
+
+  it("exits 1 in non-interactive mode when required flags are missing", async () => {
+    const { stdout, stderr, exitCode } = await runCLI(
+      ["-n", "-a"],
+      '{"name":"Ada"}'
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("--object-mode is required in non-interactive mode");
+    expect(stdout).toBe("");
   });
 });

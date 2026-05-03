@@ -235,6 +235,12 @@ export const schema = z.strictObject({
 `);
   });
 
+  it("renders empty objects as z.strictObject({}) in strict mode", () => {
+    expect(renderSchema({ kind: "object", properties: [] })).toBe(
+      "z.strictObject({})"
+    );
+  });
+
   it("renders empty objects as z.looseObject({}) in loose mode", () => {
     expect(renderSchema({ kind: "object", properties: [] }, 0, "loose")).toBe(
       "z.looseObject({})"
@@ -247,6 +253,74 @@ export const schema = z.strictObject({
 
     const rendered = renderSchema(schema, 0, "strict", "separate", "", new Map(), new Map(), new Set());
     expect(rendered).toBe(`z.strictObject({\n  user: userSchema,\n})`);
+  });
+
+  it("renders deeply nested objects in nested mode", () => {
+    const schema = inferSchema({
+      user: {
+        profile: {
+          name: "Ada",
+        },
+      },
+    });
+
+    expect(renderSchema(schema)).toBe(`z.strictObject({
+  user: z.strictObject({
+    profile: z.strictObject({
+      name: z.string(),
+    }),
+  }),
+})`);
+  });
+
+  it("renders arrays of arrays", () => {
+    expect(
+      renderSchema({ kind: "array", items: { kind: "array", items: { kind: "string" } } })
+    ).toBe("z.array(z.array(z.string()))");
+  });
+});
+
+describe("renderModule top-level primitives", () => {
+  it("renders a complete module with a top-level string", () => {
+    expect(renderModule({ kind: "string" })).toBe(
+      `import { z } from "zod";\n\nexport const schema = z.string();\n`
+    );
+  });
+
+  it("renders a complete module with a top-level number", () => {
+    expect(renderModule({ kind: "number" })).toBe(
+      `import { z } from "zod";\n\nexport const schema = z.number();\n`
+    );
+  });
+
+  it("renders a complete module with a top-level boolean", () => {
+    expect(renderModule({ kind: "boolean" })).toBe(
+      `import { z } from "zod";\n\nexport const schema = z.boolean();\n`
+    );
+  });
+
+  it("renders a complete module with a top-level null", () => {
+    expect(renderModule({ kind: "null" })).toBe(
+      `import { z } from "zod";\n\nexport const schema = z.null();\n`
+    );
+  });
+
+  it("renders a complete module with a top-level unknown", () => {
+    expect(renderModule({ kind: "unknown" })).toBe(
+      `import { z } from "zod";\n\nexport const schema = z.unknown();\n`
+    );
+  });
+
+  it("renders a complete module with a top-level array", () => {
+    expect(renderModule({ kind: "array", items: { kind: "number" } })).toBe(
+      `import { z } from "zod";\n\nexport const schema = z.array(z.number());\n`
+    );
+  });
+
+  it("renders a complete module with arrays of arrays", () => {
+    expect(
+      renderModule({ kind: "array", items: { kind: "array", items: { kind: "string" } } })
+    ).toBe(`import { z } from "zod";\n\nexport const schema = z.array(z.array(z.string()));\n`);
   });
 });
 
