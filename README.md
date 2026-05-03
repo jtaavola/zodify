@@ -1,6 +1,18 @@
-# zodify
+# zodify-json
 
 Convert sample JSON responses into [Zod](https://zod.dev) schemas.
+
+## Install
+
+```bash
+npm i -g zodify-json
+```
+
+Or run without installing:
+
+```bash
+npx zodify-json < input.json
+```
 
 ## Usage
 
