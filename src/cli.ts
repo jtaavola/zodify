@@ -27,6 +27,7 @@ async function promptObjectMode(): Promise<ObjectMode> {
     const answer = await select<ObjectMode>(
       {
         message: "Object mode",
+        loop: false,
         choices: [
           { name: "strict", value: "strict", description: "Reject unknown keys" },
           { name: "loose", value: "loose", description: "Allow unknown keys" },
@@ -58,6 +59,7 @@ async function promptOptionalFields(schema: SchemaNode): Promise<Set<string>> {
     const selected = await checkbox<string>(
       {
         message: "Optional fields",
+        loop: false,
         choices,
       },
       { input: ttyInput, output: process.stderr }
