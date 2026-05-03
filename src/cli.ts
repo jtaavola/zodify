@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { openSync } from "fs";
-import { readFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { ReadStream } from "tty";
 import { checkbox, select, Separator } from "@inquirer/prompts";
 import { AbortPromptError, CancelPromptError, ExitPromptError } from "@inquirer/core";
@@ -18,15 +18,17 @@ Options:
   -m, --nested-mode=<nested|separate> Nested schema definition style (default: nested)
   -p, --optional <path,path,...>      Comma-separated fields to mark as optional
   -a, --optional-all                  Mark all fields as optional
+  -o, --output <file>                 Write schema to file instead of stdout
   -h, --help                          Show this help message`;
 
-export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive?: boolean; filePath?: string; error?: string } {
+export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive?: boolean; filePath?: string; outputPath?: string; error?: string } {
   let objectMode: ObjectMode | undefined;
   let nestedMode: NestedMode | undefined;
   const optionalPaths = new Set<string>();
   let optionalAll = false;
   let nonInteractive = false;
   let filePath: string | undefined;
+  let outputPath: string | undefined;
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -75,6 +77,17 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
       optionalAll = true;
     } else if (arg === "--non-interactive" || arg === "-n") {
       nonInteractive = true;
+    } else if (arg.startsWith("--output=")) {
+      outputPath = arg.slice("--output=".length);
+      if (outputPath === "") {
+        return { error: "--output= requires a file path argument." };
+      }
+    } else if (arg === "--output" || arg === "-o") {
+      const value = argv[++i];
+      if (value === undefined || value.startsWith("--")) {
+        return { error: "--output requires a file path argument." };
+      }
+      outputPath = value;
     } else if (arg === "--help" || arg === "-h") {
       return {};
     } else if (!arg.startsWith("-")) {
@@ -87,7 +100,7 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
     }
   }
 
-  return { objectMode, nestedMode, optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined, optionalAll, nonInteractive, filePath };
+  return { objectMode, nestedMode, optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined, optionalAll, nonInteractive, filePath, outputPath };
 }
 
 async function readStdin(): Promise<string> {
@@ -284,7 +297,13 @@ async function main(): Promise<void> {
 
   const finalSchema = applyOptionalPaths(schema, optionalPaths);
 
-  console.log(renderModule(finalSchema, objectMode, nestedMode));
+  const output = renderModule(finalSchema, objectMode, nestedMode);
+
+  if (args.outputPath) {
+    await writeFile(args.outputPath, output, "utf-8");
+  } else {
+    console.log(output);
+  }
 }
 
 main().catch((error: unknown) => {
