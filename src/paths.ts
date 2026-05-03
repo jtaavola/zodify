@@ -37,7 +37,7 @@ function walk(schema: SchemaNode, prefix: string, paths: OptionalPath[]): void {
 
 export function applyOptionalPaths(
   schema: SchemaNode,
-  selectedPaths: Set<string>
+  selectedPaths: Set<string>,
 ): SchemaNode {
   return applyPaths(schema, "", selectedPaths);
 }
@@ -45,7 +45,7 @@ export function applyOptionalPaths(
 function applyPaths(
   schema: SchemaNode,
   prefix: string,
-  selectedPaths: Set<string>
+  selectedPaths: Set<string>,
 ): SchemaNode {
   if (schema.kind === "object") {
     const properties: ObjectProperty[] = [];

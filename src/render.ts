@@ -6,7 +6,7 @@ export type NestedMode = "nested" | "separate";
 export function renderModule(
   schema: SchemaNode,
   objectMode: ObjectMode = "strict",
-  nestedMode: NestedMode = "nested"
+  nestedMode: NestedMode = "nested",
 ): string {
   if (nestedMode === "nested") {
     return `import { z } from "zod";\n\nexport const schema = ${renderSchema(schema, 0, objectMode, "nested")};\n`;
@@ -24,12 +24,15 @@ export function renderModule(
     "",
     nameMap,
     renderedMap,
-    usedNames
+    usedNames,
   );
 
   let result = `import { z } from "zod";\n\n`;
   for (const [, name] of nameMap) {
-    const rendered = renderedMap.get(name)!;
+    const rendered = renderedMap.get(name);
+    if (rendered === undefined) {
+      throw new Error(`Missing rendered schema for ${name}`);
+    }
     result += `export const ${name} = ${rendered};\n\n`;
   }
   result += `export const schema = ${mainSchema};\n`;
@@ -44,7 +47,7 @@ export function renderSchema(
   path: string = "",
   nameMap: Map<SchemaNode, string> = new Map(),
   renderedMap: Map<string, string> = new Map(),
-  usedNames: Set<string> = new Set()
+  usedNames: Set<string> = new Set(),
 ): string {
   let result: string;
   switch (schema.kind) {
@@ -70,7 +73,7 @@ export function renderSchema(
         path,
         nameMap,
         renderedMap,
-        usedNames
+        usedNames,
       );
       break;
     case "object":
@@ -90,7 +93,7 @@ export function renderSchema(
             path,
             nameMap,
             renderedMap,
-            usedNames
+            usedNames,
           );
           nameMap.set(schema, name);
           renderedMap.set(name, rendered);
@@ -105,7 +108,7 @@ export function renderSchema(
           path,
           nameMap,
           renderedMap,
-          usedNames
+          usedNames,
         );
       }
       break;
@@ -124,7 +127,7 @@ function renderArray(
   path: string,
   nameMap: Map<SchemaNode, string>,
   renderedMap: Map<string, string>,
-  usedNames: Set<string>
+  usedNames: Set<string>,
 ): string {
   const itemPath = path ? `${path}[]` : "[]";
   const inner = renderSchema(
@@ -135,7 +138,7 @@ function renderArray(
     itemPath,
     nameMap,
     renderedMap,
-    usedNames
+    usedNames,
   );
   if (inner.includes("\n")) {
     return `z.array(\n${" ".repeat(indent + 2)}${inner}\n${" ".repeat(indent)})`;
@@ -151,7 +154,7 @@ function renderObject(
   path: string,
   nameMap: Map<SchemaNode, string>,
   renderedMap: Map<string, string>,
-  usedNames: Set<string>
+  usedNames: Set<string>,
 ): string {
   const objectFn = objectMode === "strict" ? "z.strictObject" : "z.looseObject";
 
@@ -172,7 +175,7 @@ function renderObject(
         propPath,
         nameMap,
         renderedMap,
-        usedNames
+        usedNames,
       );
       if (optional) {
         rendered += ".optional()";
@@ -191,7 +194,7 @@ function generateName(path: string, usedNames: Set<string>): string {
     if (seg === "[]") {
       part = "Item";
     } else if (seg.endsWith("[]")) {
-      part = pascalCase(seg.slice(0, -2)) + "Item";
+      part = `${pascalCase(seg.slice(0, -2))}Item`;
     } else {
       part = pascalCase(seg);
     }
@@ -201,9 +204,9 @@ function generateName(path: string, usedNames: Set<string>): string {
     return part;
   });
 
-  let name = parts.join("") + "Schema";
+  let name = `${parts.join("")}Schema`;
   if (!/^[a-zA-Z]/.test(name)) {
-    name = "schema" + name;
+    name = `schema${name}`;
   }
 
   if (!usedNames.has(name)) return name;
@@ -222,5 +225,5 @@ function renderPropertyKey(key: string): string {
 }
 
 function isValidIdentifier(key: string): boolean {
-  return /^[$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*$/u.test(key);
+  return /^[$_\p{ID_Start}](?:[$_\p{ID_Continue}]|\u200C|\u200D)*$/u.test(key);
 }

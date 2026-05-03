@@ -1,13 +1,16 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { spawn, execSync } from "child_process";
-import { resolve } from "path";
+import { execSync, spawn } from "node:child_process";
+import { resolve } from "node:path";
+import { beforeAll, describe, expect, it } from "vitest";
 import { parseArgs } from "./cli.js";
 import { inferSchema } from "./infer.js";
-import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
+import { applyOptionalPaths, collectOptionalPaths } from "./paths.js";
 
 const CLI_PATH = resolve("dist/cli.js");
 
-function runCLI(args: string[], stdin?: string): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+function runCLI(
+  args: string[],
+  stdin?: string,
+): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
   return new Promise((resolve, reject) => {
     const proc = spawn("node", [CLI_PATH, ...args], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -74,7 +77,6 @@ describe("parseArgs", () => {
     expect(result.objectMode).toBe("loose");
   });
 
-
   it("parses --nested-mode=nested", () => {
     const result = parseArgs(["node", "cli", "--nested-mode=nested"]);
     expect(result.nestedMode).toBe("nested");
@@ -82,7 +84,7 @@ describe("parseArgs", () => {
 
   it("returns an error for unknown flags", () => {
     const result = parseArgs(["node", "cli", "--unknown-flag"]);
-    expect(result.error).toBe('Unknown option: --unknown-flag');
+    expect(result.error).toBe("Unknown option: --unknown-flag");
   });
 
   it("parses multiple flags together", () => {
@@ -111,7 +113,16 @@ describe("parseArgs", () => {
   });
 
   it("parses shortcuts with long-only object mode", () => {
-    const result = parseArgs(["node", "cli", "-n", "--object-mode", "strict", "-m", "nested", "-a"]);
+    const result = parseArgs([
+      "node",
+      "cli",
+      "-n",
+      "--object-mode",
+      "strict",
+      "-m",
+      "nested",
+      "-a",
+    ]);
     expect(result.nonInteractive).toBe(true);
     expect(result.objectMode).toBe("strict");
     expect(result.nestedMode).toBe("nested");
@@ -157,14 +168,24 @@ describe("parseArgs", () => {
   });
 
   it("parses options before a file path", () => {
-    const result = parseArgs(["node", "cli", "--object-mode=strict", "example.json"]);
+    const result = parseArgs([
+      "node",
+      "cli",
+      "--object-mode=strict",
+      "example.json",
+    ]);
     expect(result.objectMode).toBe("strict");
     expect(result.filePath).toBe("example.json");
     expect(result.error).toBeUndefined();
   });
 
   it("parses options after a file path", () => {
-    const result = parseArgs(["node", "cli", "example.json", "--nested-mode=separate"]);
+    const result = parseArgs([
+      "node",
+      "cli",
+      "example.json",
+      "--nested-mode=separate",
+    ]);
     expect(result.filePath).toBe("example.json");
     expect(result.nestedMode).toBe("separate");
     expect(result.error).toBeUndefined();
@@ -223,12 +244,16 @@ describe("parseArgs", () => {
 
   it("returns an error for invalid --object-mode value", () => {
     const result = parseArgs(["node", "cli", "--object-mode=invalid"]);
-    expect(result.error).toBe('Invalid --object-mode: "invalid". Must be "strict" or "loose".');
+    expect(result.error).toBe(
+      'Invalid --object-mode: "invalid". Must be "strict" or "loose".',
+    );
   });
 
   it("returns an error for invalid --nested-mode value", () => {
     const result = parseArgs(["node", "cli", "--nested-mode=invalid"]);
-    expect(result.error).toBe('Invalid --nested-mode: "invalid". Must be "nested" or "separate".');
+    expect(result.error).toBe(
+      'Invalid --nested-mode: "invalid". Must be "nested" or "separate".',
+    );
   });
 });
 
@@ -311,17 +336,19 @@ describe("CLI integration", () => {
   it("prints schema for valid JSON via stdin", async () => {
     const { stdout, stderr, exitCode } = await runCLI(
       ["-n", "--object-mode=strict", "-a"],
-      '{"name":"Ada","age":36}'
+      '{"name":"Ada","age":36}',
     );
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
-    expect(stdout).toBe(`import { z } from "zod";\n\nexport const schema = z.strictObject({\n  name: z.string().optional(),\n  age: z.number().optional(),\n});\n`);
+    expect(stdout).toBe(
+      `import { z } from "zod";\n\nexport const schema = z.strictObject({\n  name: z.string().optional(),\n  age: z.number().optional(),\n});\n`,
+    );
   });
 
   it("exits 1 for invalid JSON via stdin", async () => {
     const { stdout, stderr, exitCode } = await runCLI(
       ["-n", "--object-mode=strict", "-a"],
-      "not json"
+      "not json",
     );
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Could not parse JSON input");
@@ -331,7 +358,7 @@ describe("CLI integration", () => {
   it("exits 1 for empty stdin", async () => {
     const { stdout, stderr, exitCode } = await runCLI(
       ["-n", "--object-mode=strict", "-a"],
-      ""
+      "",
     );
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Empty input");
@@ -346,7 +373,7 @@ describe("CLI integration", () => {
   });
 
   it("prints schema from a file", async () => {
-    const { writeFileSync, unlinkSync } = require("fs");
+    const { writeFileSync, unlinkSync } = require("node:fs");
     const tmpFile = resolve("tmp-test-input.json");
     writeFileSync(tmpFile, '{"id":1}', "utf-8");
     try {
@@ -358,7 +385,9 @@ describe("CLI integration", () => {
       ]);
       expect(exitCode).toBe(0);
       expect(stderr).toBe("");
-      expect(stdout).toBe(`import { z } from "zod";\n\nexport const schema = z.looseObject({\n  id: z.number().optional(),\n});\n`);
+      expect(stdout).toBe(
+        `import { z } from "zod";\n\nexport const schema = z.looseObject({\n  id: z.number().optional(),\n});\n`,
+      );
     } finally {
       unlinkSync(tmpFile);
     }
@@ -367,10 +396,12 @@ describe("CLI integration", () => {
   it("exits 1 in non-interactive mode when required flags are missing", async () => {
     const { stdout, stderr, exitCode } = await runCLI(
       ["-n", "-a"],
-      '{"name":"Ada"}'
+      '{"name":"Ada"}',
     );
     expect(exitCode).toBe(1);
-    expect(stderr).toContain("--object-mode is required in non-interactive mode");
+    expect(stderr).toContain(
+      "--object-mode is required in non-interactive mode",
+    );
     expect(stdout).toBe("");
   });
 });

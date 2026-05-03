@@ -1,13 +1,23 @@
 #!/usr/bin/env node
 
-import { openSync } from "fs";
-import { readFile, writeFile } from "fs/promises";
-import { ReadStream } from "tty";
-import { checkbox, select, Separator } from "@inquirer/prompts";
-import { AbortPromptError, CancelPromptError, ExitPromptError } from "@inquirer/core";
-import { hasNestedObjects, hasObjects, inferSchema, type JsonValue, type SchemaNode } from "./infer.js";
-import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
-import { renderModule, type ObjectMode, type NestedMode } from "./render.js";
+import { openSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
+import { ReadStream } from "node:tty";
+import {
+  AbortPromptError,
+  CancelPromptError,
+  ExitPromptError,
+} from "@inquirer/core";
+import { checkbox, Separator, select } from "@inquirer/prompts";
+import {
+  hasNestedObjects,
+  hasObjects,
+  inferSchema,
+  type JsonValue,
+  type SchemaNode,
+} from "./infer.js";
+import { applyOptionalPaths, collectOptionalPaths } from "./paths.js";
+import { type NestedMode, type ObjectMode, renderModule } from "./render.js";
 
 const usage = `Usage: zodify [options] [file.json]
        cat response.json | zodify [options]
@@ -21,7 +31,17 @@ Options:
   -o, --output <file>                 Write schema to file instead of stdout
   -h, --help                          Show this help message`;
 
-export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive?: boolean; filePath?: string; outputPath?: string; error?: string; help?: boolean } {
+export function parseArgs(argv: string[]): {
+  objectMode?: ObjectMode;
+  nestedMode?: NestedMode;
+  optionalPaths?: Set<string>;
+  optionalAll?: boolean;
+  nonInteractive?: boolean;
+  filePath?: string;
+  outputPath?: string;
+  error?: string;
+  help?: boolean;
+} {
   let objectMode: ObjectMode | undefined;
   let nestedMode: NestedMode | undefined;
   const optionalPaths = new Set<string>();
@@ -36,25 +56,33 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
     if (arg.startsWith("--object-mode=")) {
       const value = arg.slice("--object-mode=".length);
       if (value !== "strict" && value !== "loose") {
-        return { error: `Invalid --object-mode: "${value}". Must be "strict" or "loose".` };
+        return {
+          error: `Invalid --object-mode: "${value}". Must be "strict" or "loose".`,
+        };
       }
       objectMode = value;
     } else if (arg === "--object-mode") {
       const value = argv[++i];
       if (value !== "strict" && value !== "loose") {
-        return { error: `Invalid --object-mode: "${value}". Must be "strict" or "loose".` };
+        return {
+          error: `Invalid --object-mode: "${value}". Must be "strict" or "loose".`,
+        };
       }
       objectMode = value;
     } else if (arg.startsWith("--nested-mode=")) {
       const value = arg.slice("--nested-mode=".length);
       if (value !== "nested" && value !== "separate") {
-        return { error: `Invalid --nested-mode: "${value}". Must be "nested" or "separate".` };
+        return {
+          error: `Invalid --nested-mode: "${value}". Must be "nested" or "separate".`,
+        };
       }
       nestedMode = value;
     } else if (arg === "--nested-mode" || arg === "-m") {
       const value = argv[++i];
       if (value !== "nested" && value !== "separate") {
-        return { error: `Invalid --nested-mode: "${value}". Must be "nested" or "separate".` };
+        return {
+          error: `Invalid --nested-mode: "${value}". Must be "nested" or "separate".`,
+        };
       }
       nestedMode = value;
     } else if (arg.startsWith("--optional=")) {
@@ -100,7 +128,15 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
     }
   }
 
-  return { objectMode, nestedMode, optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined, optionalAll, nonInteractive, filePath, outputPath };
+  return {
+    objectMode,
+    nestedMode,
+    optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined,
+    optionalAll,
+    nonInteractive,
+    filePath,
+    outputPath,
+  };
 }
 
 async function readStdin(): Promise<string> {
@@ -123,11 +159,15 @@ async function promptObjectMode(): Promise<ObjectMode> {
         loop: false,
         choices: [
           new Separator(),
-          { name: "strict", value: "strict", description: "Reject unknown keys" },
+          {
+            name: "strict",
+            value: "strict",
+            description: "Reject unknown keys",
+          },
           { name: "loose", value: "loose", description: "Allow unknown keys" },
         ],
       },
-      { input: ttyInput, output: process.stderr }
+      { input: ttyInput, output: process.stderr },
     );
     return answer;
   } finally {
@@ -145,11 +185,19 @@ async function promptNestedMode(): Promise<NestedMode> {
         loop: false,
         choices: [
           new Separator(),
-          { name: "nested", value: "nested", description: "Define schemas inline" },
-          { name: "separate", value: "separate", description: "Define each nested schema as a separate export" },
+          {
+            name: "nested",
+            value: "nested",
+            description: "Define schemas inline",
+          },
+          {
+            name: "separate",
+            value: "separate",
+            description: "Define each nested schema as a separate export",
+          },
         ],
       },
-      { input: ttyInput, output: process.stderr }
+      { input: ttyInput, output: process.stderr },
     );
     return answer;
   } finally {
@@ -182,7 +230,7 @@ async function promptOptionalFields(schema: SchemaNode): Promise<Set<string>> {
         pageSize: 15,
         choices,
       },
-      { input: ttyInput, output: process.stderr }
+      { input: ttyInput, output: process.stderr },
     );
     return new Set(selected);
   } finally {
@@ -214,9 +262,13 @@ async function main(): Promise<void> {
   let input: string;
 
   try {
-    input = args.filePath ? await readFile(args.filePath, "utf-8") : await readStdin();
+    input = args.filePath
+      ? await readFile(args.filePath, "utf-8")
+      : await readStdin();
   } catch (error) {
-    console.error(`Error: Could not read ${args.filePath ? `file "${args.filePath}"` : "stdin"}.`);
+    console.error(
+      `Error: Could not read ${args.filePath ? `file "${args.filePath}"` : "stdin"}.`,
+    );
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
     return;
@@ -256,7 +308,9 @@ async function main(): Promise<void> {
     }
     const paths = collectOptionalPaths(schema);
     if (paths.length > 0 && !args.optionalPaths && !args.optionalAll) {
-      errors.push("--optional or --optional-all is required in non-interactive mode");
+      errors.push(
+        "--optional or --optional-all is required in non-interactive mode",
+      );
     }
     if (errors.length > 0) {
       for (const error of errors) {

@@ -50,7 +50,11 @@ describe("renderSchema", () => {
   });
 
   it("renders a complete TypeScript module", () => {
-    const schema = inferSchema({ id: "123", active: true, "first-name": "Ada" });
+    const schema = inferSchema({
+      id: "123",
+      active: true,
+      "first-name": "Ada",
+    });
 
     expect(renderModule(schema)).toBe(`import { z } from "zod";
 
@@ -63,7 +67,11 @@ export const schema = z.strictObject({
   });
 
   it("renders a complete TypeScript module in loose mode", () => {
-    const schema = inferSchema({ id: "123", active: true, "first-name": "Ada" });
+    const schema = inferSchema({
+      id: "123",
+      active: true,
+      "first-name": "Ada",
+    });
 
     expect(renderModule(schema, "loose")).toBe(`import { z } from "zod";
 
@@ -81,16 +89,16 @@ export const schema = z.looseObject({
 
   it("renders empty arrays", () => {
     expect(renderSchema({ kind: "array", items: { kind: "unknown" } })).toBe(
-      "z.array(z.unknown())"
+      "z.array(z.unknown())",
     );
   });
 
   it("renders primitive arrays", () => {
     expect(renderSchema({ kind: "array", items: { kind: "string" } })).toBe(
-      "z.array(z.string())"
+      "z.array(z.string())",
     );
     expect(renderSchema({ kind: "array", items: { kind: "number" } })).toBe(
-      "z.array(z.number())"
+      "z.array(z.number())",
     );
   });
 
@@ -140,7 +148,7 @@ export const schema = z.looseObject({
 
   it("renders mixed arrays", () => {
     expect(renderSchema({ kind: "array", items: { kind: "unknown" } })).toBe(
-      "z.array(z.unknown())"
+      "z.array(z.unknown())",
     );
   });
 
@@ -189,17 +197,19 @@ export const schema = z.looseObject({
   });
 
   it("renders nullable schemas", () => {
-    expect(renderSchema({ kind: "string", nullable: true })).toBe("z.string().nullable()");
-    expect(renderSchema({ kind: "number", nullable: true })).toBe("z.number().nullable()");
-    expect(renderSchema({ kind: "boolean", nullable: true })).toBe("z.boolean().nullable()");
+    expect(renderSchema({ kind: "string", nullable: true })).toBe(
+      "z.string().nullable()",
+    );
+    expect(renderSchema({ kind: "number", nullable: true })).toBe(
+      "z.number().nullable()",
+    );
+    expect(renderSchema({ kind: "boolean", nullable: true })).toBe(
+      "z.boolean().nullable()",
+    );
   });
 
   it("renders nullable and optional object properties", () => {
-    const schema = inferSchema([
-      { name: "Ada" },
-      { name: null },
-      {},
-    ]);
+    const schema = inferSchema([{ name: "Ada" }, { name: null }, {}]);
 
     expect(renderSchema(schema)).toBe(`z.array(
   z.strictObject({
@@ -209,18 +219,17 @@ export const schema = z.looseObject({
   });
 
   it("renders arrays with nullable items", () => {
-    expect(renderSchema({ kind: "array", items: { kind: "string", nullable: true } })).toBe(
-      "z.array(z.string().nullable())"
-    );
+    expect(
+      renderSchema({
+        kind: "array",
+        items: { kind: "string", nullable: true },
+      }),
+    ).toBe("z.array(z.string().nullable())");
   });
 
   it("renders a complete module with nullable fields", () => {
     const schema = inferSchema({
-      users: [
-        { name: "Ada" },
-        { name: null },
-        {},
-      ],
+      users: [{ name: "Ada" }, { name: null }, {}],
     });
 
     expect(renderModule(schema)).toBe(`import { z } from "zod";
@@ -237,21 +246,30 @@ export const schema = z.strictObject({
 
   it("renders empty objects as z.strictObject({}) in strict mode", () => {
     expect(renderSchema({ kind: "object", properties: [] })).toBe(
-      "z.strictObject({})"
+      "z.strictObject({})",
     );
   });
 
   it("renders empty objects as z.looseObject({}) in loose mode", () => {
     expect(renderSchema({ kind: "object", properties: [] }, 0, "loose")).toBe(
-      "z.looseObject({})"
+      "z.looseObject({})",
     );
   });
 
   it("returns a reference name for nested objects in separate mode", () => {
-    const nested = inferSchema({ id: "1" });
+    const _nested = inferSchema({ id: "1" });
     const schema = inferSchema({ user: { id: "1" } });
 
-    const rendered = renderSchema(schema, 0, "strict", "separate", "", new Map(), new Map(), new Set());
+    const rendered = renderSchema(
+      schema,
+      0,
+      "strict",
+      "separate",
+      "",
+      new Map(),
+      new Map(),
+      new Set(),
+    );
     expect(rendered).toBe(`z.strictObject({\n  user: userSchema,\n})`);
   });
 
@@ -275,7 +293,10 @@ export const schema = z.strictObject({
 
   it("renders arrays of arrays", () => {
     expect(
-      renderSchema({ kind: "array", items: { kind: "array", items: { kind: "string" } } })
+      renderSchema({
+        kind: "array",
+        items: { kind: "array", items: { kind: "string" } },
+      }),
     ).toBe("z.array(z.array(z.string()))");
   });
 });
@@ -283,44 +304,49 @@ export const schema = z.strictObject({
 describe("renderModule top-level primitives", () => {
   it("renders a complete module with a top-level string", () => {
     expect(renderModule({ kind: "string" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.string();\n`
+      `import { z } from "zod";\n\nexport const schema = z.string();\n`,
     );
   });
 
   it("renders a complete module with a top-level number", () => {
     expect(renderModule({ kind: "number" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.number();\n`
+      `import { z } from "zod";\n\nexport const schema = z.number();\n`,
     );
   });
 
   it("renders a complete module with a top-level boolean", () => {
     expect(renderModule({ kind: "boolean" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.boolean();\n`
+      `import { z } from "zod";\n\nexport const schema = z.boolean();\n`,
     );
   });
 
   it("renders a complete module with a top-level null", () => {
     expect(renderModule({ kind: "null" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.null();\n`
+      `import { z } from "zod";\n\nexport const schema = z.null();\n`,
     );
   });
 
   it("renders a complete module with a top-level unknown", () => {
     expect(renderModule({ kind: "unknown" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.unknown();\n`
+      `import { z } from "zod";\n\nexport const schema = z.unknown();\n`,
     );
   });
 
   it("renders a complete module with a top-level array", () => {
     expect(renderModule({ kind: "array", items: { kind: "number" } })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.array(z.number());\n`
+      `import { z } from "zod";\n\nexport const schema = z.array(z.number());\n`,
     );
   });
 
   it("renders a complete module with arrays of arrays", () => {
     expect(
-      renderModule({ kind: "array", items: { kind: "array", items: { kind: "string" } } })
-    ).toBe(`import { z } from "zod";\n\nexport const schema = z.array(z.array(z.string()));\n`);
+      renderModule({
+        kind: "array",
+        items: { kind: "array", items: { kind: "string" } },
+      }),
+    ).toBe(
+      `import { z } from "zod";\n\nexport const schema = z.array(z.array(z.string()));\n`,
+    );
   });
 });
 
@@ -328,7 +354,9 @@ describe("renderModule separate mode", () => {
   it("renders nested objects as separate exports", () => {
     const schema = inferSchema({ user: { id: "1", name: "Ada" } });
 
-    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+    expect(
+      renderModule(schema, "strict", "separate"),
+    ).toBe(`import { z } from "zod";
 
 export const userSchema = z.strictObject({
   id: z.string(),
@@ -350,7 +378,9 @@ export const schema = z.strictObject({
       },
     });
 
-    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+    expect(
+      renderModule(schema, "strict", "separate"),
+    ).toBe(`import { z } from "zod";
 
 export const userProfileSchema = z.strictObject({
   name: z.string(),
@@ -371,7 +401,9 @@ export const schema = z.strictObject({
       users: [{ id: "1" }, { id: "2" }],
     });
 
-    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+    expect(
+      renderModule(schema, "strict", "separate"),
+    ).toBe(`import { z } from "zod";
 
 export const usersItemSchema = z.strictObject({
   id: z.string(),
@@ -386,7 +418,9 @@ export const schema = z.strictObject({
   it("renders top-level arrays with separate item exports", () => {
     const schema = inferSchema([{ id: "1" }]);
 
-    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+    expect(
+      renderModule(schema, "strict", "separate"),
+    ).toBe(`import { z } from "zod";
 
 export const itemSchema = z.strictObject({
   id: z.string(),
@@ -402,7 +436,9 @@ export const schema = z.array(itemSchema);
       User: { id: "2" },
     });
 
-    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+    expect(
+      renderModule(schema, "strict", "separate"),
+    ).toBe(`import { z } from "zod";
 
 export const userSchema = z.strictObject({
   id: z.string(),
@@ -422,7 +458,9 @@ export const schema = z.strictObject({
   it("renders separate mode in loose mode", () => {
     const schema = inferSchema({ user: { id: "1" } });
 
-    expect(renderModule(schema, "loose", "separate")).toBe(`import { z } from "zod";
+    expect(
+      renderModule(schema, "loose", "separate"),
+    ).toBe(`import { z } from "zod";
 
 export const userSchema = z.looseObject({
   id: z.string(),
@@ -442,7 +480,9 @@ export const schema = z.looseObject({
       ],
     });
 
-    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+    expect(
+      renderModule(schema, "strict", "separate"),
+    ).toBe(`import { z } from "zod";
 
 export const usersItemSchema = z.strictObject({
   id: z.string(),
@@ -457,12 +497,11 @@ export const schema = z.strictObject({
   });
 
   it("preserves nullable on nested objects in separate mode", () => {
-    const schema = inferSchema([
-      { user: { id: "1" } },
-      { user: null },
-    ]);
+    const schema = inferSchema([{ user: { id: "1" } }, { user: null }]);
 
-    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+    expect(
+      renderModule(schema, "strict", "separate"),
+    ).toBe(`import { z } from "zod";
 
 export const itemUserSchema = z.strictObject({
   id: z.string(),
