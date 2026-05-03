@@ -230,7 +230,7 @@ function mergeSchemas(a: SchemaNode, b: SchemaNode): SchemaNode {
     return result;
   }
 
-  const result: SchemaNode = { kind: a.kind };
+  const result: SchemaNode = { kind: a.kind as "string" | "number" | "boolean" };
   if (nullable) {
     result.nullable = true;
   }

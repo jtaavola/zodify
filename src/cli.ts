@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { openSync } from "fs";
+import { readFile } from "fs/promises";
 import { ReadStream } from "tty";
 import { checkbox, select, Separator } from "@inquirer/prompts";
 import { AbortPromptError, CancelPromptError, ExitPromptError } from "@inquirer/core";
@@ -8,7 +9,8 @@ import { hasNestedObjects, hasObjects, inferSchema, type JsonValue, type SchemaN
 import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
 import { renderModule, type ObjectMode, type NestedMode } from "./render.js";
 
-const usage = `Usage: cat response.json | zodify [options]
+const usage = `Usage: zodify [options] [file.json]
+       cat response.json | zodify [options]
 
 Options:
   -n, --non-interactive               Run without interactive prompts (requires all config flags)
@@ -18,12 +20,13 @@ Options:
   -a, --optional-all                  Mark all fields as optional
   -h, --help                          Show this help message`;
 
-export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive: boolean; error?: string } {
+export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive?: boolean; filePath?: string; error?: string } {
   let objectMode: ObjectMode | undefined;
   let nestedMode: NestedMode | undefined;
   const optionalPaths = new Set<string>();
   let optionalAll = false;
   let nonInteractive = false;
+  let filePath: string | undefined;
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -74,12 +77,17 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
       nonInteractive = true;
     } else if (arg === "--help" || arg === "-h") {
       return {};
+    } else if (!arg.startsWith("-")) {
+      if (filePath) {
+        return { error: `Unexpected extra argument: ${arg}` };
+      }
+      filePath = arg;
     } else {
       return { error: `Unknown option: ${arg}` };
     }
   }
 
-  return { objectMode, nestedMode, optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined, optionalAll, nonInteractive };
+  return { objectMode, nestedMode, optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined, optionalAll, nonInteractive, filePath };
 }
 
 async function readStdin(): Promise<string> {
@@ -179,13 +187,22 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (process.stdin.isTTY) {
+  if (!args.filePath && process.stdin.isTTY) {
     console.error(usage);
     process.exitCode = 1;
     return;
   }
 
-  const input = await readStdin();
+  let input: string;
+
+  try {
+    input = args.filePath ? await readFile(args.filePath, "utf-8") : await readStdin();
+  } catch (error) {
+    console.error(`Error: Could not read ${args.filePath ? `file "${args.filePath}"` : "stdin"}.`);
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+    return;
+  }
 
   if (input.length === 0) {
     console.error(usage);
