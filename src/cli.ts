@@ -11,16 +11,18 @@ import { renderModule, type ObjectMode, type NestedMode } from "./render.js";
 const usage = `Usage: cat response.json | zodify [options]
 
 Options:
+  --non-interactive               Run without interactive prompts (requires all config flags)
   --object-mode=<strict|loose>    Object validation mode (default: strict)
   --nested-mode=<nested|separate> Nested schema definition style (default: nested)
   --optional <path,path,...>      Comma-separated fields to mark as optional
   --optional-all                  Mark all fields as optional`;
 
-export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; error?: string } {
+export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive: boolean; error?: string } {
   let objectMode: ObjectMode | undefined;
   let nestedMode: NestedMode | undefined;
   const optionalPaths = new Set<string>();
   let optionalAll = false;
+  let nonInteractive = false;
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -67,6 +69,8 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
       }
     } else if (arg === "--optional-all") {
       optionalAll = true;
+    } else if (arg === "--non-interactive") {
+      nonInteractive = true;
     } else if (arg === "--help" || arg === "-h") {
       return {};
     } else {
@@ -74,7 +78,7 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
     }
   }
 
-  return { objectMode, nestedMode, optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined, optionalAll };
+  return { objectMode, nestedMode, optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined, optionalAll, nonInteractive };
 }
 
 async function readStdin(): Promise<string> {
@@ -203,24 +207,63 @@ async function main(): Promise<void> {
 
   let objectMode: ObjectMode = args.objectMode ?? "strict";
   let nestedMode: NestedMode = args.nestedMode ?? "nested";
-  if (hasObjects(schema)) {
-    if (!args.objectMode) {
-      objectMode = await promptObjectMode();
+  let optionalPaths: Set<string>;
+
+  if (args.nonInteractive) {
+    const errors: string[] = [];
+    if (hasObjects(schema) && !args.objectMode) {
+      errors.push("--object-mode is required in non-interactive mode");
     }
     if (hasNestedObjects(schema) && !args.nestedMode) {
-      nestedMode = await promptNestedMode();
+      errors.push("--nested-mode is required in non-interactive mode");
+    }
+    const paths = collectOptionalPaths(schema);
+    if (paths.length > 0 && !args.optionalPaths && !args.optionalAll) {
+      errors.push("--optional or --optional-all is required in non-interactive mode");
+    }
+    if (errors.length > 0) {
+      for (const error of errors) {
+        console.error(`Error: ${error}`);
+      }
+      if (paths.length > 0 && !args.optionalPaths && !args.optionalAll) {
+        console.error("");
+        console.error("Available fields for --optional:");
+        for (const { path } of paths) {
+          console.error(`  ${path}`);
+        }
+      }
+      console.error("");
+      console.error(usage);
+      process.exitCode = 1;
+      return;
+    }
+    if (args.optionalPaths) {
+      optionalPaths = args.optionalPaths;
+    } else if (args.optionalAll) {
+      optionalPaths = new Set(paths.map((p) => p.path));
+    } else {
+      optionalPaths = new Set();
+    }
+  } else {
+    if (hasObjects(schema)) {
+      if (!args.objectMode) {
+        objectMode = await promptObjectMode();
+      }
+      if (hasNestedObjects(schema) && !args.nestedMode) {
+        nestedMode = await promptNestedMode();
+      }
+    }
+
+    if (args.optionalPaths) {
+      optionalPaths = args.optionalPaths;
+    } else if (args.optionalAll) {
+      const paths = collectOptionalPaths(schema);
+      optionalPaths = new Set(paths.map((p) => p.path));
+    } else {
+      optionalPaths = await promptOptionalFields(schema);
     }
   }
 
-  let optionalPaths: Set<string>;
-  if (args.optionalPaths) {
-    optionalPaths = args.optionalPaths;
-  } else if (args.optionalAll) {
-    const paths = collectOptionalPaths(schema);
-    optionalPaths = new Set(paths.map((p) => p.path));
-  } else {
-    optionalPaths = await promptOptionalFields(schema);
-  }
   const finalSchema = applyOptionalPaths(schema, optionalPaths);
 
   console.log(renderModule(finalSchema, objectMode, nestedMode));
