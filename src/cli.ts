@@ -6,7 +6,7 @@ import { checkbox, select } from "@inquirer/prompts";
 import { AbortPromptError, CancelPromptError, ExitPromptError } from "@inquirer/core";
 import { hasObjects, inferSchema, type JsonValue, type SchemaNode } from "./infer.js";
 import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
-import { renderModule, type ObjectMode } from "./render.js";
+import { renderModule, type ObjectMode, type NestedMode } from "./render.js";
 
 const usage = `Usage: cat response.json | zodify`;
 
@@ -31,6 +31,27 @@ async function promptObjectMode(): Promise<ObjectMode> {
         choices: [
           { name: "strict", value: "strict", description: "Reject unknown keys" },
           { name: "loose", value: "loose", description: "Allow unknown keys" },
+        ],
+      },
+      { input: ttyInput, output: process.stderr }
+    );
+    return answer;
+  } finally {
+    ttyInput.destroy();
+  }
+}
+
+async function promptNestedMode(): Promise<NestedMode> {
+  const fd = openSync("/dev/tty", "r");
+  const ttyInput = new ReadStream(fd);
+  try {
+    const answer = await select<NestedMode>(
+      {
+        message: "Nested schemas",
+        loop: false,
+        choices: [
+          { name: "nested", value: "nested", description: "Define schemas inline" },
+          { name: "separate", value: "separate", description: "Define each nested schema as a separate export" },
         ],
       },
       { input: ttyInput, output: process.stderr }
@@ -99,14 +120,16 @@ async function main(): Promise<void> {
   const schema = inferSchema(value);
 
   let objectMode: ObjectMode = "strict";
+  let nestedMode: NestedMode = "nested";
   if (hasObjects(schema)) {
     objectMode = await promptObjectMode();
+    nestedMode = await promptNestedMode();
   }
 
   const optionalPaths = await promptOptionalFields(schema);
   const finalSchema = applyOptionalPaths(schema, optionalPaths);
 
-  console.log(renderModule(finalSchema, objectMode));
+  console.log(renderModule(finalSchema, objectMode, nestedMode));
 }
 
 main().catch((error: unknown) => {

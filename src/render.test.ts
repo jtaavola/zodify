@@ -240,4 +240,145 @@ export const schema = z.strictObject({
       "z.looseObject({})"
     );
   });
+
+  it("returns a reference name for nested objects in separate mode", () => {
+    const nested = inferSchema({ id: "1" });
+    const schema = inferSchema({ user: { id: "1" } });
+
+    const rendered = renderSchema(schema, 0, "strict", "separate", "", new Map(), new Map(), new Set());
+    expect(rendered).toBe(`z.strictObject({\n  user: userSchema,\n})`);
+  });
+});
+
+describe("renderModule separate mode", () => {
+  it("renders nested objects as separate exports", () => {
+    const schema = inferSchema({ user: { id: "1", name: "Ada" } });
+
+    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+
+export const userSchema = z.strictObject({
+  id: z.string(),
+  name: z.string(),
+});
+
+export const schema = z.strictObject({
+  user: userSchema,
+});
+`);
+  });
+
+  it("renders deeply nested objects as separate exports", () => {
+    const schema = inferSchema({
+      user: {
+        profile: {
+          name: "Ada",
+        },
+      },
+    });
+
+    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+
+export const userProfileSchema = z.strictObject({
+  name: z.string(),
+});
+
+export const userSchema = z.strictObject({
+  profile: userProfileSchema,
+});
+
+export const schema = z.strictObject({
+  user: userSchema,
+});
+`);
+  });
+
+  it("renders array item objects as separate exports", () => {
+    const schema = inferSchema({
+      users: [{ id: "1" }, { id: "2" }],
+    });
+
+    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+
+export const usersItemSchema = z.strictObject({
+  id: z.string(),
+});
+
+export const schema = z.strictObject({
+  users: z.array(usersItemSchema),
+});
+`);
+  });
+
+  it("renders top-level arrays with separate item exports", () => {
+    const schema = inferSchema([{ id: "1" }]);
+
+    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+
+export const itemSchema = z.strictObject({
+  id: z.string(),
+});
+
+export const schema = z.array(itemSchema);
+`);
+  });
+
+  it("uses numbered suffixes for duplicate names", () => {
+    const schema = inferSchema({
+      user: { id: "1" },
+      User: { id: "2" },
+    });
+
+    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+
+export const userSchema = z.strictObject({
+  id: z.string(),
+});
+
+export const userSchema2 = z.strictObject({
+  id: z.string(),
+});
+
+export const schema = z.strictObject({
+  user: userSchema,
+  User: userSchema2,
+});
+`);
+  });
+
+  it("renders separate mode in loose mode", () => {
+    const schema = inferSchema({ user: { id: "1" } });
+
+    expect(renderModule(schema, "loose", "separate")).toBe(`import { z } from "zod";
+
+export const userSchema = z.looseObject({
+  id: z.string(),
+});
+
+export const schema = z.looseObject({
+  user: userSchema,
+});
+`);
+  });
+
+  it("renders a complete module with arrays in separate mode", () => {
+    const schema = inferSchema({
+      users: [
+        { id: "1", name: "Ada" },
+        { id: "2", email: "ada@example.com" },
+      ],
+    });
+
+    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+
+export const usersItemSchema = z.strictObject({
+  id: z.string(),
+  name: z.string().optional(),
+  email: z.string().optional(),
+});
+
+export const schema = z.strictObject({
+  users: z.array(usersItemSchema),
+});
+`);
+  });
 });

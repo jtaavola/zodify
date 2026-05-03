@@ -1,19 +1,73 @@
 import type { SchemaNode } from "./infer.js";
 
 export type ObjectMode = "strict" | "loose";
+export type NestedMode = "nested" | "separate";
 
 export function renderModule(
   schema: SchemaNode,
-  objectMode: ObjectMode = "strict"
+  objectMode: ObjectMode = "strict",
+  nestedMode: NestedMode = "nested"
 ): string {
-  return `import { z } from "zod";\n\nexport const schema = ${renderSchema(schema, 0, objectMode)};\n`;
+  if (nestedMode === "nested") {
+    return `import { z } from "zod";\n\nexport const schema = ${renderSchema(schema, 0, objectMode, "nested")};\n`;
+  }
+
+  const nameMap = new Map<SchemaNode, string>();
+  const renderedMap = new Map<string, string>();
+  const usedNames = new Set<string>();
+
+  const mainSchema = renderSchema(
+    schema,
+    0,
+    objectMode,
+    "separate",
+    "",
+    nameMap,
+    renderedMap,
+    usedNames
+  );
+
+  let result = `import { z } from "zod";\n\n`;
+  for (const [, name] of nameMap) {
+    const rendered = renderedMap.get(name)!;
+    result += `export const ${name} = ${rendered};\n\n`;
+  }
+  result += `export const schema = ${mainSchema};\n`;
+  return result;
 }
 
 export function renderSchema(
   schema: SchemaNode,
   indent = 0,
-  objectMode: ObjectMode = "strict"
+  objectMode: ObjectMode = "strict",
+  nestedMode: NestedMode = "nested",
+  path: string = "",
+  nameMap: Map<SchemaNode, string> = new Map(),
+  renderedMap: Map<string, string> = new Map(),
+  usedNames: Set<string> = new Set()
 ): string {
+  if (nestedMode === "separate" && path !== "" && schema.kind === "object") {
+    const existing = nameMap.get(schema);
+    if (existing) return existing;
+
+    const name = generateName(path, usedNames);
+    usedNames.add(name);
+
+    const rendered = renderObject(
+      schema,
+      0,
+      objectMode,
+      nestedMode,
+      path,
+      nameMap,
+      renderedMap,
+      usedNames
+    );
+    nameMap.set(schema, name);
+    renderedMap.set(name, rendered);
+    return name;
+  }
+
   let result: string;
   switch (schema.kind) {
     case "string":
@@ -30,10 +84,28 @@ export function renderSchema(
     case "unknown":
       return "z.unknown()";
     case "array":
-      result = renderArray(schema, indent, objectMode);
+      result = renderArray(
+        schema,
+        indent,
+        objectMode,
+        nestedMode,
+        path,
+        nameMap,
+        renderedMap,
+        usedNames
+      );
       break;
     case "object":
-      result = renderObject(schema, indent, objectMode);
+      result = renderObject(
+        schema,
+        indent,
+        objectMode,
+        nestedMode,
+        path,
+        nameMap,
+        renderedMap,
+        usedNames
+      );
       break;
   }
   if (schema.nullable) {
@@ -45,9 +117,24 @@ export function renderSchema(
 function renderArray(
   schema: Extract<SchemaNode, { kind: "array" }>,
   indent: number,
-  objectMode: ObjectMode
+  objectMode: ObjectMode,
+  nestedMode: NestedMode,
+  path: string,
+  nameMap: Map<SchemaNode, string>,
+  renderedMap: Map<string, string>,
+  usedNames: Set<string>
 ): string {
-  const inner = renderSchema(schema.items, indent + 2, objectMode);
+  const itemPath = path ? `${path}[]` : "[]";
+  const inner = renderSchema(
+    schema.items,
+    indent + 2,
+    objectMode,
+    nestedMode,
+    itemPath,
+    nameMap,
+    renderedMap,
+    usedNames
+  );
   if (inner.includes("\n")) {
     return `z.array(\n${" ".repeat(indent + 2)}${inner}\n${" ".repeat(indent)})`;
   }
@@ -57,7 +144,12 @@ function renderArray(
 function renderObject(
   schema: Extract<SchemaNode, { kind: "object" }>,
   indent: number,
-  objectMode: ObjectMode
+  objectMode: ObjectMode,
+  nestedMode: NestedMode,
+  path: string,
+  nameMap: Map<SchemaNode, string>,
+  renderedMap: Map<string, string>,
+  usedNames: Set<string>
 ): string {
   const objectFn = objectMode === "strict" ? "z.strictObject" : "z.looseObject";
 
@@ -69,7 +161,17 @@ function renderObject(
   const propertyIndent = " ".repeat(indent + 2);
   const properties = schema.properties
     .map(({ key, schema: propertySchema, optional }) => {
-      let rendered = renderSchema(propertySchema, indent + 2, objectMode);
+      const propPath = path ? `${path}.${key}` : key;
+      let rendered = renderSchema(
+        propertySchema,
+        indent + 2,
+        objectMode,
+        nestedMode,
+        propPath,
+        nameMap,
+        renderedMap,
+        usedNames
+      );
       if (optional) {
         rendered += ".optional()";
       }
@@ -78,6 +180,39 @@ function renderObject(
     .join("\n");
 
   return `${objectFn}({\n${properties}\n${baseIndent}})`;
+}
+
+function generateName(path: string, usedNames: Set<string>): string {
+  const segments = path.split(".");
+  const parts = segments.map((seg, i) => {
+    let part: string;
+    if (seg === "[]") {
+      part = "Item";
+    } else if (seg.endsWith("[]")) {
+      part = pascalCase(seg.slice(0, -2)) + "Item";
+    } else {
+      part = pascalCase(seg);
+    }
+    if (i === 0) {
+      part = part.charAt(0).toLowerCase() + part.slice(1);
+    }
+    return part;
+  });
+
+  let name = parts.join("") + "Schema";
+  if (!/^[a-zA-Z]/.test(name)) {
+    name = "schema" + name;
+  }
+
+  if (!usedNames.has(name)) return name;
+
+  let i = 2;
+  while (usedNames.has(`${name}${i}`)) i++;
+  return `${name}${i}`;
+}
+
+function pascalCase(str: string): string {
+  return str.replace(/(?:^|[-_])(\w)/g, (_, c: string) => c.toUpperCase());
 }
 
 function renderPropertyKey(key: string): string {
