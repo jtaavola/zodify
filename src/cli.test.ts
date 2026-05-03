@@ -42,6 +42,7 @@ describe("parseArgs", () => {
     expect(result.objectMode).toBe("loose");
   });
 
+
   it("parses --nested-mode=nested", () => {
     const result = parseArgs(["node", "cli", "--nested-mode=nested"]);
     expect(result.nestedMode).toBe("nested");
@@ -65,10 +66,35 @@ describe("parseArgs", () => {
     expect(result.optionalAll).toBe(true);
   });
 
+  it("parses -n as --non-interactive", () => {
+    const result = parseArgs(["node", "cli", "-n"]);
+    expect(result.nonInteractive).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
   it("parses --non-interactive", () => {
     const result = parseArgs(["node", "cli", "--non-interactive"]);
     expect(result.nonInteractive).toBe(true);
     expect(result.error).toBeUndefined();
+  });
+
+  it("parses shortcuts with long-only object mode", () => {
+    const result = parseArgs(["node", "cli", "-n", "--object-mode", "strict", "-m", "nested", "-a"]);
+    expect(result.nonInteractive).toBe(true);
+    expect(result.objectMode).toBe("strict");
+    expect(result.nestedMode).toBe("nested");
+    expect(result.optionalAll).toBe(true);
+  });
+
+  it("parses -p as --optional", () => {
+    const result = parseArgs(["node", "cli", "-p", "a,b.c"]);
+    expect(result.optionalPaths).toEqual(new Set(["a", "b.c"]));
+    expect(result.error).toBeUndefined();
+  });
+
+  it("returns an error for -p without a value", () => {
+    const result = parseArgs(["node", "cli", "-p"]);
+    expect(result.error).toBe("--optional requires a path argument.");
   });
 
   it("parses --non-interactive with other flags", () => {

@@ -11,11 +11,12 @@ import { renderModule, type ObjectMode, type NestedMode } from "./render.js";
 const usage = `Usage: cat response.json | zodify [options]
 
 Options:
-  --non-interactive               Run without interactive prompts (requires all config flags)
-  --object-mode=<strict|loose>    Object validation mode (default: strict)
-  --nested-mode=<nested|separate> Nested schema definition style (default: nested)
-  --optional <path,path,...>      Comma-separated fields to mark as optional
-  --optional-all                  Mark all fields as optional`;
+  -n, --non-interactive               Run without interactive prompts (requires all config flags)
+      --object-mode=<strict|loose>    Object validation mode (default: strict)
+  -m, --nested-mode=<nested|separate> Nested schema definition style (default: nested)
+  -p, --optional <path,path,...>      Comma-separated fields to mark as optional
+  -a, --optional-all                  Mark all fields as optional
+  -h, --help                          Show this help message`;
 
 export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; nonInteractive: boolean; error?: string } {
   let objectMode: ObjectMode | undefined;
@@ -45,7 +46,7 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
         return { error: `Invalid --nested-mode: "${value}". Must be "nested" or "separate".` };
       }
       nestedMode = value;
-    } else if (arg === "--nested-mode") {
+    } else if (arg === "--nested-mode" || arg === "-m") {
       const value = argv[++i];
       if (value !== "nested" && value !== "separate") {
         return { error: `Invalid --nested-mode: "${value}". Must be "nested" or "separate".` };
@@ -59,17 +60,17 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
       for (const path of value.split(",")) {
         optionalPaths.add(path);
       }
-    } else if (arg === "--optional") {
+    } else if (arg === "--optional" || arg === "-p") {
       const value = argv[++i];
-      if (value === undefined || value.startsWith("--")) {
+      if (value === undefined || value.startsWith("--") || value.startsWith("-")) {
         return { error: "--optional requires a path argument." };
       }
       for (const path of value.split(",")) {
         optionalPaths.add(path);
       }
-    } else if (arg === "--optional-all") {
+    } else if (arg === "--optional-all" || arg === "-a") {
       optionalAll = true;
-    } else if (arg === "--non-interactive") {
+    } else if (arg === "--non-interactive" || arg === "-n") {
       nonInteractive = true;
     } else if (arg === "--help" || arg === "-h") {
       return {};
