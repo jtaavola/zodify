@@ -11,7 +11,7 @@ npm i -g zodify-json
 Or run without installing:
 
 ```bash
-npx zodify-json < input.json
+npx zodify-json input.json
 ```
 
 ## Usage
