@@ -96,6 +96,23 @@ describe("inferSchema", () => {
     expect(inferSchema(null)).toEqual({ kind: "null" });
   });
 
+  it("infers strings without format detection", () => {
+    expect(inferSchema("2024-01-15")).toEqual({ kind: "string" });
+    expect(inferSchema("2024-01-15T09:30:00Z")).toEqual({ kind: "string" });
+    expect(inferSchema("ada@example.com")).toEqual({ kind: "string" });
+    expect(inferSchema("https://example.com")).toEqual({ kind: "string" });
+    expect(inferSchema("550e8400-e29b-41d4-a716-446655440000")).toEqual({ kind: "string" });
+  });
+
+  it("infers both true and false as broad boolean type", () => {
+    expect(inferSchema(true)).toEqual({ kind: "boolean" });
+    expect(inferSchema(false)).toEqual({ kind: "boolean" });
+    expect(inferSchema([true, false, true])).toEqual({
+      kind: "array",
+      items: { kind: "boolean" },
+    });
+  });
+
   it("infers object properties in input order", () => {
     expect(inferSchema({ id: "123", active: true, count: 2, empty: null })).toEqual({
       kind: "object",
@@ -288,6 +305,27 @@ describe("inferSchema", () => {
     expect(inferSchema([1, "a", null])).toEqual({
       kind: "array",
       items: { kind: "unknown" },
+    });
+  });
+
+  it("infers arrays of arrays by flattening nested items", () => {
+    expect(inferSchema([[1, 2], [3, 4]])).toEqual({
+      kind: "array",
+      items: { kind: "array", items: { kind: "number" } },
+    });
+  });
+
+  it("infers arrays of arrays with mixed inner types as unknown", () => {
+    expect(inferSchema([[1, 2], ["a", "b"]])).toEqual({
+      kind: "array",
+      items: { kind: "array", items: { kind: "unknown" } },
+    });
+  });
+
+  it("infers arrays of arrays with nullable inner items", () => {
+    expect(inferSchema([[1, null], [3, 4]])).toEqual({
+      kind: "array",
+      items: { kind: "array", items: { kind: "number", nullable: true } },
     });
   });
 });
