@@ -46,28 +46,6 @@ export function renderSchema(
   renderedMap: Map<string, string> = new Map(),
   usedNames: Set<string> = new Set()
 ): string {
-  if (nestedMode === "separate" && path !== "" && schema.kind === "object") {
-    const existing = nameMap.get(schema);
-    if (existing) return existing;
-
-    const name = generateName(path, usedNames);
-    usedNames.add(name);
-
-    const rendered = renderObject(
-      schema,
-      0,
-      objectMode,
-      nestedMode,
-      path,
-      nameMap,
-      renderedMap,
-      usedNames
-    );
-    nameMap.set(schema, name);
-    renderedMap.set(name, rendered);
-    return name;
-  }
-
   let result: string;
   switch (schema.kind) {
     case "string":
@@ -96,16 +74,40 @@ export function renderSchema(
       );
       break;
     case "object":
-      result = renderObject(
-        schema,
-        indent,
-        objectMode,
-        nestedMode,
-        path,
-        nameMap,
-        renderedMap,
-        usedNames
-      );
+      if (nestedMode === "separate" && path !== "") {
+        const existing = nameMap.get(schema);
+        if (existing) {
+          result = existing;
+        } else {
+          const name = generateName(path, usedNames);
+          usedNames.add(name);
+
+          const rendered = renderObject(
+            schema,
+            0,
+            objectMode,
+            nestedMode,
+            path,
+            nameMap,
+            renderedMap,
+            usedNames
+          );
+          nameMap.set(schema, name);
+          renderedMap.set(name, rendered);
+          result = name;
+        }
+      } else {
+        result = renderObject(
+          schema,
+          indent,
+          objectMode,
+          nestedMode,
+          path,
+          nameMap,
+          renderedMap,
+          usedNames
+        );
+      }
       break;
   }
   if (schema.nullable) {

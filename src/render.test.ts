@@ -381,4 +381,24 @@ export const schema = z.strictObject({
 });
 `);
   });
+
+  it("preserves nullable on nested objects in separate mode", () => {
+    const schema = inferSchema([
+      { user: { id: "1" } },
+      { user: null },
+    ]);
+
+    expect(renderModule(schema, "strict", "separate")).toBe(`import { z } from "zod";
+
+export const itemUserSchema = z.strictObject({
+  id: z.string(),
+});
+
+export const itemSchema = z.strictObject({
+  user: itemUserSchema.nullable(),
+});
+
+export const schema = z.array(itemSchema);
+`);
+  });
 });
