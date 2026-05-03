@@ -8,7 +8,74 @@ import { hasNestedObjects, hasObjects, inferSchema, type JsonValue, type SchemaN
 import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
 import { renderModule, type ObjectMode, type NestedMode } from "./render.js";
 
-const usage = `Usage: cat response.json | zodify`;
+const usage = `Usage: cat response.json | zodify [options]
+
+Options:
+  --object-mode=<strict|loose>    Object validation mode (default: strict)
+  --nested-mode=<nested|separate> Nested schema definition style (default: nested)
+  --optional <path,path,...>      Comma-separated fields to mark as optional
+  --optional-all                  Mark all inferred optional fields as optional`;
+
+function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; error?: string } {
+  let objectMode: ObjectMode | undefined;
+  let nestedMode: NestedMode | undefined;
+  const optionalPaths = new Set<string>();
+  let optionalAll = false;
+
+  for (let i = 2; i < argv.length; i++) {
+    const arg = argv[i];
+
+    if (arg.startsWith("--object-mode=")) {
+      const value = arg.slice("--object-mode=".length);
+      if (value !== "strict" && value !== "loose") {
+        return { error: `Invalid --object-mode: "${value}". Must be "strict" or "loose".` };
+      }
+      objectMode = value;
+    } else if (arg === "--object-mode") {
+      const value = argv[++i];
+      if (value !== "strict" && value !== "loose") {
+        return { error: `Invalid --object-mode: "${value}". Must be "strict" or "loose".` };
+      }
+      objectMode = value;
+    } else if (arg.startsWith("--nested-mode=")) {
+      const value = arg.slice("--nested-mode=".length);
+      if (value !== "nested" && value !== "separate") {
+        return { error: `Invalid --nested-mode: "${value}". Must be "nested" or "separate".` };
+      }
+      nestedMode = value;
+    } else if (arg === "--nested-mode") {
+      const value = argv[++i];
+      if (value !== "nested" && value !== "separate") {
+        return { error: `Invalid --nested-mode: "${value}". Must be "nested" or "separate".` };
+      }
+      nestedMode = value;
+    } else if (arg.startsWith("--optional=")) {
+      const value = arg.slice("--optional=".length);
+      if (value === "") {
+        return { error: "--optional= requires a path argument." };
+      }
+      for (const path of value.split(",")) {
+        optionalPaths.add(path);
+      }
+    } else if (arg === "--optional") {
+      const value = argv[++i];
+      if (value === undefined || value.startsWith("--")) {
+        return { error: "--optional requires a path argument." };
+      }
+      for (const path of value.split(",")) {
+        optionalPaths.add(path);
+      }
+    } else if (arg === "--optional-all") {
+      optionalAll = true;
+    } else if (arg === "--help" || arg === "-h") {
+      return {};
+    } else {
+      return { error: `Unknown option: ${arg}` };
+    }
+  }
+
+  return { objectMode, nestedMode, optionalPaths: optionalPaths.size > 0 ? optionalPaths : undefined, optionalAll };
+}
 
 async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
@@ -98,6 +165,15 @@ async function promptOptionalFields(schema: SchemaNode): Promise<Set<string>> {
 }
 
 async function main(): Promise<void> {
+  const args = parseArgs(process.argv);
+
+  if (args.error) {
+    console.error(`Error: ${args.error}`);
+    console.error(usage);
+    process.exitCode = 1;
+    return;
+  }
+
   if (process.stdin.isTTY) {
     console.error(usage);
     process.exitCode = 1;
@@ -125,16 +201,26 @@ async function main(): Promise<void> {
 
   const schema = inferSchema(value);
 
-  let objectMode: ObjectMode = "strict";
-  let nestedMode: NestedMode = "nested";
+  let objectMode: ObjectMode = args.objectMode ?? "strict";
+  let nestedMode: NestedMode = args.nestedMode ?? "nested";
   if (hasObjects(schema)) {
-    objectMode = await promptObjectMode();
-    if (hasNestedObjects(schema)) {
+    if (!args.objectMode) {
+      objectMode = await promptObjectMode();
+    }
+    if (hasNestedObjects(schema) && !args.nestedMode) {
       nestedMode = await promptNestedMode();
     }
   }
 
-  const optionalPaths = await promptOptionalFields(schema);
+  let optionalPaths: Set<string>;
+  if (args.optionalPaths) {
+    optionalPaths = args.optionalPaths;
+  } else if (args.optionalAll) {
+    const paths = collectOptionalPaths(schema);
+    optionalPaths = new Set(paths.filter((p) => p.optional).map((p) => p.path));
+  } else {
+    optionalPaths = await promptOptionalFields(schema);
+  }
   const finalSchema = applyOptionalPaths(schema, optionalPaths);
 
   console.log(renderModule(finalSchema, objectMode, nestedMode));
