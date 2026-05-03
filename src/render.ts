@@ -9,7 +9,7 @@ export function renderModule(
   nestedMode: NestedMode = "nested",
 ): string {
   if (nestedMode === "nested") {
-    return `import { z } from "zod";\n\nexport const schema = ${renderSchema(schema, 0, objectMode, "nested")};\n`;
+    return `import { z } from "zod";\n\nconst schema = ${renderSchema(schema, 0, objectMode, "nested")};\n`;
   }
 
   const nameMap = new Map<SchemaNode, string>();
@@ -33,9 +33,9 @@ export function renderModule(
     if (rendered === undefined) {
       throw new Error(`Missing rendered schema for ${name}`);
     }
-    result += `export const ${name} = ${rendered};\n\n`;
+    result += `const ${name} = ${rendered};\n\n`;
   }
-  result += `export const schema = ${mainSchema};\n`;
+  result += `const schema = ${mainSchema};\n`;
   return result;
 }
 

@@ -58,7 +58,7 @@ describe("renderSchema", () => {
 
     expect(renderModule(schema)).toBe(`import { z } from "zod";
 
-export const schema = z.strictObject({
+const schema = z.strictObject({
   id: z.string(),
   active: z.boolean(),
   "first-name": z.string(),
@@ -75,7 +75,7 @@ export const schema = z.strictObject({
 
     expect(renderModule(schema, "loose")).toBe(`import { z } from "zod";
 
-export const schema = z.looseObject({
+const schema = z.looseObject({
   id: z.string(),
   active: z.boolean(),
   "first-name": z.string(),
@@ -162,7 +162,7 @@ export const schema = z.looseObject({
 
     expect(renderModule(schema)).toBe(`import { z } from "zod";
 
-export const schema = z.strictObject({
+const schema = z.strictObject({
   users: z.array(
     z.strictObject({
       id: z.string(),
@@ -184,7 +184,7 @@ export const schema = z.strictObject({
 
     expect(renderModule(schema, "loose")).toBe(`import { z } from "zod";
 
-export const schema = z.looseObject({
+const schema = z.looseObject({
   users: z.array(
     z.looseObject({
       id: z.string(),
@@ -234,7 +234,7 @@ export const schema = z.looseObject({
 
     expect(renderModule(schema)).toBe(`import { z } from "zod";
 
-export const schema = z.strictObject({
+const schema = z.strictObject({
   users: z.array(
     z.strictObject({
       name: z.string().nullable().optional(),
@@ -304,37 +304,37 @@ export const schema = z.strictObject({
 describe("renderModule top-level primitives", () => {
   it("renders a complete module with a top-level string", () => {
     expect(renderModule({ kind: "string" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.string();\n`,
+      `import { z } from "zod";\n\nconst schema = z.string();\n`,
     );
   });
 
   it("renders a complete module with a top-level number", () => {
     expect(renderModule({ kind: "number" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.number();\n`,
+      `import { z } from "zod";\n\nconst schema = z.number();\n`,
     );
   });
 
   it("renders a complete module with a top-level boolean", () => {
     expect(renderModule({ kind: "boolean" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.boolean();\n`,
+      `import { z } from "zod";\n\nconst schema = z.boolean();\n`,
     );
   });
 
   it("renders a complete module with a top-level null", () => {
     expect(renderModule({ kind: "null" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.null();\n`,
+      `import { z } from "zod";\n\nconst schema = z.null();\n`,
     );
   });
 
   it("renders a complete module with a top-level unknown", () => {
     expect(renderModule({ kind: "unknown" })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.unknown();\n`,
+      `import { z } from "zod";\n\nconst schema = z.unknown();\n`,
     );
   });
 
   it("renders a complete module with a top-level array", () => {
     expect(renderModule({ kind: "array", items: { kind: "number" } })).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.array(z.number());\n`,
+      `import { z } from "zod";\n\nconst schema = z.array(z.number());\n`,
     );
   });
 
@@ -345,7 +345,7 @@ describe("renderModule top-level primitives", () => {
         items: { kind: "array", items: { kind: "string" } },
       }),
     ).toBe(
-      `import { z } from "zod";\n\nexport const schema = z.array(z.array(z.string()));\n`,
+      `import { z } from "zod";\n\nconst schema = z.array(z.array(z.string()));\n`,
     );
   });
 });
@@ -358,12 +358,12 @@ describe("renderModule separate mode", () => {
       renderModule(schema, "strict", "separate"),
     ).toBe(`import { z } from "zod";
 
-export const userSchema = z.strictObject({
+const userSchema = z.strictObject({
   id: z.string(),
   name: z.string(),
 });
 
-export const schema = z.strictObject({
+const schema = z.strictObject({
   user: userSchema,
 });
 `);
@@ -382,15 +382,15 @@ export const schema = z.strictObject({
       renderModule(schema, "strict", "separate"),
     ).toBe(`import { z } from "zod";
 
-export const userProfileSchema = z.strictObject({
+const userProfileSchema = z.strictObject({
   name: z.string(),
 });
 
-export const userSchema = z.strictObject({
+const userSchema = z.strictObject({
   profile: userProfileSchema,
 });
 
-export const schema = z.strictObject({
+const schema = z.strictObject({
   user: userSchema,
 });
 `);
@@ -405,11 +405,11 @@ export const schema = z.strictObject({
       renderModule(schema, "strict", "separate"),
     ).toBe(`import { z } from "zod";
 
-export const usersItemSchema = z.strictObject({
+const usersItemSchema = z.strictObject({
   id: z.string(),
 });
 
-export const schema = z.strictObject({
+const schema = z.strictObject({
   users: z.array(usersItemSchema),
 });
 `);
@@ -422,11 +422,11 @@ export const schema = z.strictObject({
       renderModule(schema, "strict", "separate"),
     ).toBe(`import { z } from "zod";
 
-export const itemSchema = z.strictObject({
+const itemSchema = z.strictObject({
   id: z.string(),
 });
 
-export const schema = z.array(itemSchema);
+const schema = z.array(itemSchema);
 `);
   });
 
@@ -440,15 +440,15 @@ export const schema = z.array(itemSchema);
       renderModule(schema, "strict", "separate"),
     ).toBe(`import { z } from "zod";
 
-export const userSchema = z.strictObject({
+const userSchema = z.strictObject({
   id: z.string(),
 });
 
-export const userSchema2 = z.strictObject({
+const userSchema2 = z.strictObject({
   id: z.string(),
 });
 
-export const schema = z.strictObject({
+const schema = z.strictObject({
   user: userSchema,
   User: userSchema2,
 });
@@ -462,11 +462,11 @@ export const schema = z.strictObject({
       renderModule(schema, "loose", "separate"),
     ).toBe(`import { z } from "zod";
 
-export const userSchema = z.looseObject({
+const userSchema = z.looseObject({
   id: z.string(),
 });
 
-export const schema = z.looseObject({
+const schema = z.looseObject({
   user: userSchema,
 });
 `);
@@ -484,13 +484,13 @@ export const schema = z.looseObject({
       renderModule(schema, "strict", "separate"),
     ).toBe(`import { z } from "zod";
 
-export const usersItemSchema = z.strictObject({
+const usersItemSchema = z.strictObject({
   id: z.string(),
   name: z.string().optional(),
   email: z.string().optional(),
 });
 
-export const schema = z.strictObject({
+const schema = z.strictObject({
   users: z.array(usersItemSchema),
 });
 `);
@@ -503,15 +503,15 @@ export const schema = z.strictObject({
       renderModule(schema, "strict", "separate"),
     ).toBe(`import { z } from "zod";
 
-export const itemUserSchema = z.strictObject({
+const itemUserSchema = z.strictObject({
   id: z.string(),
 });
 
-export const itemSchema = z.strictObject({
+const itemSchema = z.strictObject({
   user: itemUserSchema.nullable(),
 });
 
-export const schema = z.array(itemSchema);
+const schema = z.array(itemSchema);
 `);
   });
 });
