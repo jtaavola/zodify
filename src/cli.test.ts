@@ -117,6 +117,31 @@ describe("parseArgs", () => {
     expect(result.nestedMode).toBe("nested");
     expect(result.optionalAll).toBe(true);
   });
+
+  it("parses a file path argument", () => {
+    const result = parseArgs(["node", "cli", "example.json"]);
+    expect(result.filePath).toBe("example.json");
+    expect(result.error).toBeUndefined();
+  });
+
+  it("parses options before a file path", () => {
+    const result = parseArgs(["node", "cli", "--object-mode=strict", "example.json"]);
+    expect(result.objectMode).toBe("strict");
+    expect(result.filePath).toBe("example.json");
+    expect(result.error).toBeUndefined();
+  });
+
+  it("parses options after a file path", () => {
+    const result = parseArgs(["node", "cli", "example.json", "--nested-mode=separate"]);
+    expect(result.filePath).toBe("example.json");
+    expect(result.nestedMode).toBe("separate");
+    expect(result.error).toBeUndefined();
+  });
+
+  it("returns an error for extra positional arguments", () => {
+    const result = parseArgs(["node", "cli", "a.json", "b.json"]);
+    expect(result.error).toBe("Unexpected extra argument: b.json");
+  });
 });
 
 describe("--optional-all integration", () => {
