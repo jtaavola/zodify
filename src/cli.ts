@@ -2,7 +2,7 @@
 
 import { openSync } from "fs";
 import { ReadStream } from "tty";
-import { checkbox, select } from "@inquirer/prompts";
+import { checkbox, select, Separator } from "@inquirer/prompts";
 import { AbortPromptError, CancelPromptError, ExitPromptError } from "@inquirer/core";
 import { hasNestedObjects, hasObjects, inferSchema, type JsonValue, type SchemaNode } from "./infer.js";
 import { collectOptionalPaths, applyOptionalPaths } from "./paths.js";
@@ -29,6 +29,7 @@ async function promptObjectMode(): Promise<ObjectMode> {
         message: "Object mode",
         loop: false,
         choices: [
+          new Separator(),
           { name: "strict", value: "strict", description: "Reject unknown keys" },
           { name: "loose", value: "loose", description: "Allow unknown keys" },
         ],
@@ -50,6 +51,7 @@ async function promptNestedMode(): Promise<NestedMode> {
         message: "Nested schemas",
         loop: false,
         choices: [
+          new Separator(),
           { name: "nested", value: "nested", description: "Define schemas inline" },
           { name: "separate", value: "separate", description: "Define each nested schema as a separate export" },
         ],
@@ -71,11 +73,14 @@ async function promptOptionalFields(schema: SchemaNode): Promise<Set<string>> {
   const fd = openSync("/dev/tty", "r");
   const ttyInput = new ReadStream(fd);
   try {
-    const choices = paths.map(({ path, optional }) => ({
-      name: path,
-      value: path,
-      checked: optional,
-    }));
+    const choices = [
+      new Separator(),
+      ...paths.map(({ path, optional }) => ({
+        name: path,
+        value: path,
+        checked: optional,
+      })),
+    ];
 
     const selected = await checkbox<string>(
       {
