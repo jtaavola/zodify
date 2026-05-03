@@ -97,6 +97,12 @@ describe("parseArgs", () => {
     expect(result.error).toBe("--optional requires a path argument.");
   });
 
+  it("accepts optional paths starting with a single dash", () => {
+    const result = parseArgs(["node", "cli", "-p", "-meta"]);
+    expect(result.optionalPaths).toEqual(new Set(["-meta"]));
+    expect(result.error).toBeUndefined();
+  });
+
   it("parses --non-interactive with other flags", () => {
     const result = parseArgs([
       "node",

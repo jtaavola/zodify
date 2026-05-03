@@ -62,7 +62,7 @@ export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode
       }
     } else if (arg === "--optional" || arg === "-p") {
       const value = argv[++i];
-      if (value === undefined || value.startsWith("--") || value.startsWith("-")) {
+      if (value === undefined || value.startsWith("--")) {
         return { error: "--optional requires a path argument." };
       }
       for (const path of value.split(",")) {
