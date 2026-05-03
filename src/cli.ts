@@ -14,9 +14,9 @@ Options:
   --object-mode=<strict|loose>    Object validation mode (default: strict)
   --nested-mode=<nested|separate> Nested schema definition style (default: nested)
   --optional <path,path,...>      Comma-separated fields to mark as optional
-  --optional-all                  Mark all inferred optional fields as optional`;
+  --optional-all                  Mark all fields as optional`;
 
-function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; error?: string } {
+export function parseArgs(argv: string[]): { objectMode?: ObjectMode; nestedMode?: NestedMode; optionalPaths?: Set<string>; optionalAll?: boolean; error?: string } {
   let objectMode: ObjectMode | undefined;
   let nestedMode: NestedMode | undefined;
   const optionalPaths = new Set<string>();
@@ -217,7 +217,7 @@ async function main(): Promise<void> {
     optionalPaths = args.optionalPaths;
   } else if (args.optionalAll) {
     const paths = collectOptionalPaths(schema);
-    optionalPaths = new Set(paths.filter((p) => p.optional).map((p) => p.path));
+    optionalPaths = new Set(paths.map((p) => p.path));
   } else {
     optionalPaths = await promptOptionalFields(schema);
   }
